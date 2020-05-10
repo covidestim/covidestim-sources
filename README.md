@@ -33,3 +33,12 @@ In order to regenerate files in `data-products` as source data changes, invoke
 ```bash
 make -B data
 ```
+
+## Example
+
+```r
+source("R/sketch.R")
+
+plot_discrepancy(incidence, state_="New York") # Plot of cases&deaths for NYS
+plot_deltas(deltas_prevalence) # Plot of revisioning actions for entire US
+```
