@@ -25,3 +25,11 @@ Note that the column added by the history-processing script, `date_committed`,
 is a UNIX timestamp, not a regular date.  In R, UNIX timestamps can be easily
 parsed by using the `anytime` package.
 
+## Staying current
+
+In order to regenerate files in `data-products` as source data changes, invoke
+`make` as follows:
+
+```bash
+make -B data
+```
