@@ -98,18 +98,12 @@ plot_discrepancy <- function(d,
     ungroup
 
   ggplot(summed_data, aes(x = date, group = date_commit)) +
-    geom_line(
-      color = 'grey',
-      aes(y = deaths)
-    ) +
+    geom_line(color = 'grey', aes(y = deaths)) +
     geom_point(
       data = ~group_by(., date_commit) %>% top_n(1, date),
       aes(y = deaths, color = date_commit)
     ) +
-    geom_line(
-      color = 'grey',
-      aes(y = cases)
-    ) +
+    geom_line(color = 'grey', aes(y = cases)) +
     geom_point(
       data = ~group_by(., date_commit) %>% top_n(1, date),
       aes(y = cases, color = date_commit)
@@ -138,13 +132,13 @@ plot_discrepancy <- function(d,
     annotation_logticks() +
     theme_linedraw() +
     labs(
-      x = "Date referenced",
-      y = "Quantity",
+      x     = "Date referenced",
+      y     = "Quantity",
       color = "Date committed"
     ) +
     theme(
       legend.justification = c(1,0),
-      legend.position = c(1,0),
-      legend.box = 'horizontal'
+      legend.position      = c(1,0),
+      legend.box           = 'horizontal'
     )
 }

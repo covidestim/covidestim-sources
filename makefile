@@ -7,10 +7,12 @@ clean:
 	@rm -f data-products/nytimes-counties.csv data-products/covidtracking-states.csv
 
 data-products/nytimes-counties.csv: $(nyt)/us-counties.csv src/file_history.sh
+	mkdir -p data-products/
 	git submodule update --remote $(nyt)
 	./src/file_history.sh $(nyt) us-counties.csv > $@
 
 data-products/covidtracking-states.csv: $(cvdt)/data/states_daily_4pm_et.csv \
   src/file_history.sh
+	mkdir -p data-products/
 	git submodule update --remote $(cvdt)
 	./src/file_history.sh $(cvdt) data/states_daily_4pm_et.csv > $@
