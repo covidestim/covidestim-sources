@@ -4,11 +4,6 @@ library(glue)
 
 file_name <- "data-products/nytimes-counties.csv"
 
-c(
-  'date', 'county', 'state', 'fips',
-  'cases', 'deaths', 'date_commit'
-) -> col_names
-
 cols(
   date        = col_date(format = '%Y-%m-%d'), # YYYY-MM-DD format
   county      = col_character(),
