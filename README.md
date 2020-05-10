@@ -1,3 +1,5 @@
+![Example output](example_output.png)
+
 This is a collection of scripts for continual analysis of revisions to public
 data which tracks the number of cases of and deaths from SARS-CoV-in the US. It
 includes a `git submodule` based scheme to keep the repository in sync with
