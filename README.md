@@ -21,6 +21,7 @@ history of this data. Currently, it is configued for analyzing the NYTimes
 data, but future modifications will be made to support a broader array of
 data sources.
 
-Note that the column `date_committed` is a UNIX timestamp, not a regular date.
-In R, UNIX timestamps can be easily parsed by using the `anytime` package.
+Note that the column added by the history-processing script, `date_committed`,
+is a UNIX timestamp, not a regular date.  In R, UNIX timestamps can be easily
+parsed by using the `anytime` package.
 
