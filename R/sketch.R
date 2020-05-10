@@ -29,7 +29,7 @@ transform_incidence <- function(d) {
 
 p <- read_csv(file_name, col_names = col_names, col_types = col_types)
 
-prevalence <- mutate(d, date_commit = anytime(date_commit))
+prevalence <- mutate(p, date_commit = anytime(date_commit))
 incidence  <- transform_incidence(prevalence)
 
 group_by(incidence, date, county, state) %>%
@@ -37,7 +37,14 @@ group_by(incidence, date, county, state) %>%
   mutate(cases  = cases  - lag(cases),
          deaths = deaths - lag(deaths)) %>%
   ungroup() %>%
-  arrange(date, date_commit) -> deltas
+  arrange(date, date_commit) -> deltas_incidence
+
+group_by(prevalence, date, county, state) %>%
+  arrange(date_commit) %>%
+  mutate(cases  = cases  - lag(cases),
+         deaths = deaths - lag(deaths)) %>%
+  ungroup() %>%
+  arrange(date, date_commit) -> deltas_prevalence
 
 plot_deltas <- function(d, state_ = NULL, county_ = NULL) {
 
@@ -60,11 +67,11 @@ plot_deltas <- function(d, state_ = NULL, county_ = NULL) {
 
   ggplot(
     summed_data,
-    aes(date, date_commit, fill = cases > 0)
+    aes(date, date_commit, fill = factor(sign(cases)))
   ) +
-  geom_tile(height = 12*60^2) +
+  geom_tile(height = 6*60^2) +
   scale_fill_manual(
-    values = c("green", "red")
+    values = c("red", "grey", "green")
   ) +
   theme_minimal()
 }

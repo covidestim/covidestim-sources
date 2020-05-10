@@ -14,8 +14,8 @@
 # - git log
 
 # The file we want to see the revisions of
-TARGET_FILE=`basename "$1"`
-ENCLOSING_DIR=`dirname "$1"`
+TARGET_FILE="$2"
+ENCLOSING_DIR="$1"
 OLD_WD=`pwd`
 
 # Go into the submodule, so that arguments to 'git cat-file' won't be
@@ -27,6 +27,7 @@ cd "$ENCLOSING_DIR"
 # Then, for each line, print the file associated with that commit hash
 # Delete its first line, since that is merely a header, and append the date
 # of the commit as the final column in the "csv"
+echo "$(head -n1 $TARGET_FILE),date_commit"
 git log --pretty='%h,%at' -- $TARGET_FILE | \
   parallel --csv \
     git cat-file -p '{1}:'"$TARGET_FILE" '|' \
