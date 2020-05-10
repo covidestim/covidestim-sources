@@ -24,7 +24,7 @@ transform_incidence <- function(d) {
 }
 
 # Read in the nytimes-counties file
-p <- read_csv(file_name, col_names = col_names, col_types = col_types)
+p <- read_csv(file_name, col_types = col_types)
 
 # Transform the UNIX timestamp into a normal Date object
 prevalence <- mutate(p, date_commit = anytime(date_commit))
