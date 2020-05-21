@@ -2,16 +2,65 @@
 
 # dataframe "daily_cases_deaths_fractionPositive" with date, state, daily cases, daily deaths, and smoothened daily fraction positive ~ line 75
 
-library(lubridate)
+library(lubridate, warn.conflicts = FALSE)
 library(ggplot2)
+library(readr)
 library(reshape2)
-library(openintro)
+suppressPackageStartupMessages(library(openintro))
+library(docopt)
 
-CTP <- "https://raw.githubusercontent.com/COVID19Tracking/covid-tracking-data/master/data/states_daily_4pm_et.csv"
-CTP_download <- read.csv(url(CTP),stringsAsFactors = F)
+'CTP Cleaner
+
+Usage:
+  cleanCTP.R -o <path> <path>
+  cleanCTP.R (-h | --help)
+  cleanCTP.R --version
+
+Options:
+  -h --help     Show this screen.
+  --version     Show version.
+  -o            Path to output cleaned data to.
+
+' -> doc
+
+arguments   <- docopt(doc, version = 'CTP Cleaner 0.1')
+input_path  <- arguments$path[2]
+output_path <- arguments$path[1]
+
+cols_only(
+  date                     = col_date(format = '%Y%m%d'),
+  state                    = col_character(),
+  positive                 = col_number(),
+  negative                 = col_number(),
+  pending                  = col_number(),
+  hospitalizedCurrently    = col_number(),
+  hospitalizedCumulative   = col_number(),
+  inIcuCurrently           = col_number(),
+  inIcuCumulative          = col_number(),
+  onVentilatorCurrently    = col_number(),
+  onVentilatorCumulative   = col_number(),
+  recovered                = col_number(),
+  dataQualityGrade         = col_character(),
+  lastUpdateEt             = col_datetime(format = '%m/%d/%Y %H:%M'),
+  hash                     = col_character(),
+  death                    = col_number(),
+  hospitalized             = col_number(),
+  total                    = col_number(),
+  totalTestResults         = col_number(),
+  posNeg                   = col_number(),
+  fips                     = col_number(),
+  deathIncrease            = col_number(),
+  hospitalizedIncrease     = col_number(),
+  negativeIncrease         = col_number(),
+  positiveIncrease         = col_number(),
+  totalTestResultsIncrease = col_number()
+) -> col_types.covidtracking
+
+# CTP <- "https://raw.githubusercontent.com/COVID19Tracking/covid-tracking-data/master/data/states_daily_4pm_et.csv"
+CTP <- read_csv(input_path, col_types = col_types.covidtracking)
 
 # The data at the top of the file are the most recent dates
-CTP_data <- CTP_download[nrow(CTP_download):1,]
+CTP_data <- CTP[nrow(CTP):1,]
 
 # lubridate
 CTP_data$date <- ymd(CTP_data$date)
@@ -78,6 +127,15 @@ for(i in 1:length(state_names)){
 }
 
 daily_cases_deaths_fractionPositive <- CTP_movingAverages[,c("date","state","daily_cases","daily_deaths","daily_fractionPositiveSmoothened")]
+
+dplyr::rename(
+  daily_cases_deaths_fractionPositive,
+  cases = daily_cases,
+  deaths = daily_deaths,
+  fracpos = daily_fractionPositiveSmoothened
+) -> final
+
+write_csv(final, output_path)
 
 ## Visualize the data
 

@@ -4,12 +4,16 @@ cvdt := data-sources/covidtracking-data
 nyc  := data-sources/nychealth-data
 
 # Target for the two history files we want to produce
-data: data-products/nytimes-counties.csv data-products/covidtracking-states.csv \
-  data-products/nychealth-chd.csv
+data: data-products/nytimes-counties.csv \
+  data-products/covidtracking-states.csv \
+  data-products/nychealth-chd.csv \
+  data-products/covidtracking-smoothed.csv
 
 clean: 
-	@rm -f data-products/nytimes-counties.csv data-products/covidtracking-states.csv \
-	  data-products/nychealth-chd.csv
+	@rm -f data-products/nytimes-counties.csv \
+	  data-products/covidtracking-states.csv \
+	  data-products/nychealth-chd.csv \
+	  data-products/covidtracking-smoothed.csv
 
 # The next two recipes pull all updates from the submodule remotes, and rerun
 # the file_history.sh script to concatenate all the committed versions of the 
@@ -29,3 +33,9 @@ data-products/nychealth-chd.csv: $(nyc)/case-hosp-death.csv src/file_history.sh
 	@mkdir -p data-products/
 	git submodule update --remote $(nyc)
 	./src/file_history.sh $(nyc) case-hosp-death.csv > $@
+
+data-products/covidtracking-smoothed.csv: $(cvdt)/data/states_daily_4pm_et.csv \
+  R/cleanCTP.R
+	@mkdir -p data-products/
+	git submodule update --remote $(cvdt)
+	Rscript R/cleanCTP.R -o ../$@ ../$<
