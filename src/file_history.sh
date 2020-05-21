@@ -39,10 +39,11 @@ cd "$ENCLOSING_DIR"
 # Then, for each line, print the file associated with that commit hash.
 # Delete its first line, since that is merely a header, and append the date
 # of the commit as the final column in the "csv".
-echo "$(head -n1 $TARGET_FILE),date_commit"
+echo "$(head -n1 $TARGET_FILE | dos2unix),date_commit"
 git log --pretty='%h,%at' -- $TARGET_FILE | \
   parallel --csv \
     git cat-file -p '{1}:'"$TARGET_FILE" '|' \
+    dos2unix '|' \
     sed -e '1d' -e 's/$/,{2}/' '|' \
     sed -e "'\$a\'"
 

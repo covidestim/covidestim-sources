@@ -1,18 +1,113 @@
 library(tidyverse)
 library(anytime)
 library(glue)
+library(geofacet)
 
-file_name <- "data-products/nytimes-counties.csv"
+file_name.nyt           <- "data-products/nytimes-counties.csv"
+file_name.covidtracking <- "data-products/covidtracking-states.csv"
+file_name.nyc           <- "data-products/nychealth-chd.csv"
 
-cols(
-  date        = col_date(format = '%Y-%m-%d'), # YYYY-MM-DD format
-  county      = col_character(),
-  state       = col_character(),
-  fips        = col_number(),
-  cases       = col_number(),
-  deaths      = col_number(),
-  date_commit = col_number() # unix timestamp
-) -> col_types
+load_nyt <- function(file_name = file_name.nyt) {
+  cols(
+    date        = col_date(format = '%Y-%m-%d'), # YYYY-MM-DD format
+    county      = col_character(),
+    state       = col_character(),
+    fips        = col_number(),
+    cases       = col_number(),
+    deaths      = col_number(),
+    date_commit = col_number() # unix timestamp
+  ) -> col_types.nyt
+
+  f <- read_csv(file_name, col_types = col_types.nyt)
+
+  # Transform the UNIX timestamp into a normal Date object
+  mutate(f, date_commit = anytime(date_commit))
+}
+
+load_covidtracking <- function(file_name = file_name.covidtracking,
+                               n_max = Inf) {
+  cols(
+    date                     = col_date(format = '%Y%m%d'),
+    state                    = col_character(),
+    positive                 = col_number(),
+    negative                 = col_number(),
+    pending                  = col_number(),
+    hospitalizedCurrently    = col_number(),
+    hospitalizedCumulative   = col_number(),
+    inIcuCurrently           = col_number(),
+    inIcuCumulative          = col_number(),
+    onVentilatorCurrently    = col_number(),
+    onVentilatorCumulative   = col_number(),
+    recovered                = col_number(),
+    dataQualityGrade         = col_character(),
+    lastUpdateEt             = col_datetime(format = '%m/%d/%Y %H:%M'),
+    hash                     = col_character(),
+    death                    = col_number(),
+    hospitalized             = col_number(),
+    total                    = col_number(),
+    totalTestResults         = col_number(),
+    posNeg                   = col_number(),
+    fips                     = col_number(),
+    deathIncrease            = col_number(),
+    hospitalizedIncrease     = col_number(),
+    negativeIncrease         = col_number(),
+    positiveIncrease         = col_number(),
+    totalTestResultsIncrease = col_number(),
+    date_commit              = col_number()
+  ) -> col_types.covidtracking
+
+  f <- read_csv(file_name, col_types = col_types.covidtracking, n_max = n_max)
+
+  # Transform the UNIX timestamp into a normal Date object
+  mutate(f, date_commit = anytime(date_commit))
+}
+
+load_nyc <- function(file_name = file_name.nyc,
+                     n_max = Inf) {
+  cols(
+    DATE_OF_INTEREST   = col_date(format = '%m/%d/%y'),
+    CASE_COUNT         = col_number(),
+    HOSPITALIZED_COUNT = col_number(),
+    DEATH_COUNT        = col_number(),
+    date_commit        = col_number()
+  ) -> col_types.nyc
+
+  d <- read_csv(file_name, col_types = col_types.nyc, n_max = n_max)
+
+  # Transform the UNIX timestamp into a normal Date object and rename a few of
+  # the variables
+  transmute(
+    d,
+    date             = DATE_OF_INTEREST,
+    cases            = CASE_COUNT,
+    hospitalizations = HOSPITALIZED_COUNT,
+    deaths           = DEATH_COUNT,
+    date_commit      = anytime(date_commit)
+  )
+}
+
+{
+  d <- load_covidtracking(n_max = 67019)
+
+  pending <- group_by_at(d, c("state", "date", "date_commit")) %>%
+    count(pending_available = is.na(pending))
+
+  doPositivesChange <- d %>%
+    select(state, date, date_commit, positive, negative, pending,
+           totalTestResults, ends_with("Increase")) %>%
+    group_by(state, date) %>%
+    summarize_at(vars(-date_commit), ~length(unique(.)))
+
+  doPositivesChange %>%
+    gather(-state, -date, key="column", value="n_vals") %>%
+    ggplot(aes(date, column, fill=factor(n_vals))) +
+      geom_tile() +
+      scale_x_date(date_breaks = '1 month',
+                   date_labels = "%b",
+                   minor_breaks = NULL) +
+      facet_geo(vars(state)) +
+      theme_linedraw()
+}
 
 # Create "case notification data" by subtracting from the previous day
 transform_incidence <- function(d) {
@@ -23,30 +118,16 @@ transform_incidence <- function(d) {
     ungroup
 }
 
-# Read in the nytimes-counties file
-p <- read_csv(file_name, col_types = col_types)
-
-# Transform the UNIX timestamp into a normal Date object
-prevalence <- mutate(p, date_commit = anytime(date_commit))
-
 # Create "case notification data"
-incidence  <- transform_incidence(prevalence)
-
-# Generate the deltas for the "case notification data"
-group_by(incidence, date, county, state) %>%
-  arrange(date_commit) %>%
-  mutate(cases  = cases  - lag(cases),
-         deaths = deaths - lag(deaths)) %>%
-  ungroup() %>%
-  arrange(date, date_commit) -> deltas_incidence
+incidence.nyt  <- transform_incidence(prevalence)
 
 # Generate the deltas for the "cumulative" data
-group_by(prevalence, date, county, state) %>%
+group_by(prevalence.nyt, date, county, state) %>%
   arrange(date_commit) %>%
   mutate(cases  = cases  - lag(cases),
          deaths = deaths - lag(deaths)) %>%
   ungroup() %>%
-  arrange(date, date_commit) -> deltas_prevalence
+  arrange(date, date_commit) -> deltas_prevalence.nyt
 
 # Makes a plot of which days have been retroactively revised. By default,
 # create a graph for the entire US. However, specifying `state_` or `county_`
@@ -147,7 +228,8 @@ plot_discrepancy <- function(d,
       trans = scales::pseudo_log_trans(base = 10),
       labels = scales::label_number_si(),
       breaks = function(limits)
-        c(0, scales::breaks_log(n=8)(c(1, limits[2])))
+        c(0, scales::breaks_log(n=8)(c(1, limits[2]))),
+      minor_breaks = 'null'
     ) +
 
     # Label every week, no minor breaks
