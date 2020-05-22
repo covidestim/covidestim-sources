@@ -8,6 +8,7 @@ library(readr)
 library(reshape2)
 suppressPackageStartupMessages(library(openintro))
 library(docopt)
+library(magrittr)
 
 'CTP Cleaner
 
@@ -133,7 +134,9 @@ dplyr::rename(
   cases = daily_cases,
   deaths = daily_deaths,
   fracpos = daily_fractionPositiveSmoothened
-) -> final
+) %>% dplyr::mutate(
+  fracpos = ifelse(is.nan(fracpos), 0, fracpos)
+) %>% tidyr::replace_na(list(fracpos = 0)) -> final
 
 write_csv(final, output_path)
 

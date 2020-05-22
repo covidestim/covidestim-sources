@@ -38,4 +38,4 @@ data-products/covidtracking-smoothed.csv: $(cvdt)/data/states_daily_4pm_et.csv \
   R/cleanCTP.R
 	@mkdir -p data-products/
 	git submodule update --remote $(cvdt)
-	Rscript R/cleanCTP.R -o ../$@ ../$<
+	Rscript R/cleanCTP.R -o $@ $<
