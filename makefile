@@ -1,9 +1,10 @@
-# Paths to the two Git submodules containing nytimes and covidtracking data
+# Paths to the three Git submodules containing nytimes, covidtracking, nyc data
 nyt  := data-sources/nytimes-data
 cvdt := data-sources/covidtracking-data
 nyc  := data-sources/nychealth-data
 
-# Target for the two history files we want to produce
+# Target for the three history files we want to produce, and the cleaned
+# cases/deaths/test-positivity data file (using Ken's script)
 data: data-products/nytimes-counties.csv \
   data-products/covidtracking-states.csv \
   data-products/nychealth-chd.csv \
@@ -15,7 +16,7 @@ clean:
 	  data-products/nychealth-chd.csv \
 	  data-products/covidtracking-smoothed.csv
 
-# The next two recipes pull all updates from the submodule remotes, and rerun
+# The next three recipes pull all updates from the submodule remotes, and rerun
 # the file_history.sh script to concatenate all the committed versions of the 
 # two files and append the commit date to the end of each row
 data-products/nytimes-counties.csv: $(nyt)/us-counties.csv src/file_history.sh
@@ -34,6 +35,8 @@ data-products/nychealth-chd.csv: $(nyc)/case-hosp-death.csv src/file_history.sh
 	git submodule update --remote $(nyc)
 	./src/file_history.sh $(nyc) case-hosp-death.csv > $@
 
+# This recipe produces smoothed test-positivty data from the Covid Tracking
+# Project
 data-products/covidtracking-smoothed.csv: $(cvdt)/data/states_daily_4pm_et.csv \
   R/cleanCTP.R
 	@mkdir -p data-products/
