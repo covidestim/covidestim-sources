@@ -13,7 +13,7 @@ library(magrittr)
 'CTP Cleaner
 
 Usage:
-  cleanCTP.R -o <path> <path>
+  cleanCTP.R -o <path> [--save-graphs <path>] <path>
   cleanCTP.R (-h | --help)
   cleanCTP.R --version
 
@@ -25,8 +25,9 @@ Options:
 ' -> doc
 
 arguments   <- docopt(doc, version = 'CTP Cleaner 0.1')
-input_path  <- arguments$path[2]
+input_path  <- arguments$path[3]
 output_path <- arguments$path[1]
+graphs_path <- arguments$path[2]
 
 cols_only(
   date                     = col_date(format = '%Y%m%d'),

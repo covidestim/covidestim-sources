@@ -1,45 +1,86 @@
+library(lubridate, warn.conflicts = FALSE)
+library(ggplot2,   warn.conflicts = FALSE)
+library(reshape2,  warn.conflicts = FALSE)
+suppressPackageStartupMessages( library(openintro, warn.conflicts = FALSE) )
+library(dplyr,     warn.conflicts = FALSE)
+library(ggpubr,    warn.conflicts = FALSE)
+library(gridExtra, warn.conflicts = FALSE)
+library(readr,     warn.conflicts = FALSE)
+library(docopt,    warn.conflicts = FALSE)
+library(magrittr,  warn.conflicts = FALSE)
+library(cli,       warn.conflicts = FALSE)
+                    
+'CTP Cleaner
 
-library(lubridate)
-library(ggplot2)
-library(reshape2)
-library(openintro)
-library(dplyr)
-library(ggpubr)
-library(gridExtra)
-library(readr)
+Usage:
+  cleanCTP.R -o <path> [--graphs <path>] <path>
+  cleanCTP.R (-h | --help)
+  cleanCTP.R --version
 
-# Read Covid Tracking Project data
-CTP <-
-  "https://raw.githubusercontent.com/COVID19Tracking/covid-tracking-data/master/data/states_daily_4pm_et.csv"
-CTP_download <- read.csv(url(CTP), stringsAsFactors = F)
+Options:
+  -o <path>             Path to output cleaned data to.
+  --graphs <path>       File to save .pdf of data-related figures to
+  -h --help             Show this screen.
+  --version             Show version.
+
+' -> doc
+
+arguments   <- docopt(doc, version = 'CTP Cleaner 0.1')
+
+input_path  <- arguments$path
+output_path <- arguments$o
+graphs_path <- arguments$graphs
+
+cols_only(
+  date                     = col_date(format = '%Y%m%d'),
+  state                    = col_character(),
+  positive                 = col_number(),
+  negative                 = col_number(),
+  pending                  = col_number(),
+  hospitalizedCurrently    = col_number(),
+  hospitalizedCumulative   = col_number(),
+  inIcuCurrently           = col_number(),
+  inIcuCumulative          = col_number(),
+  onVentilatorCurrently    = col_number(),
+  onVentilatorCumulative   = col_number(),
+  recovered                = col_number(),
+  dataQualityGrade         = col_character(),
+  lastUpdateEt             = col_datetime(format = '%m/%d/%Y %H:%M'),
+  hash                     = col_character(),
+  death                    = col_number(),
+  hospitalized             = col_number(),
+  total                    = col_number(),
+  totalTestResults         = col_number(),
+  posNeg                   = col_number(),
+  fips                     = col_number(),
+  deathIncrease            = col_number(),
+  hospitalizedIncrease     = col_number(),
+  negativeIncrease         = col_number(),
+  positiveIncrease         = col_number(),
+  totalTestResultsIncrease = col_number()
+) -> col_types.covidtracking
+
+cli_alert_info("Loading CTP data from {.file {input_path}}")
+cli_process_start("Loading CTP data from {.file {input_path}}")
+CTP_loaded <- read_csv(input_path, col_types = col_types.covidtracking)
+cli_process_done()
 
 # Reverse dataframe
-CTP_data <- CTP_download[nrow(CTP_download):1, ]
+CTP_data <- CTP_loaded[nrow(CTP_loaded):1, ]
 
 # Lubridate date
 CTP_data$date <- ymd(CTP_data$date)
 
-# Replace the state/territory abbreviations with state/territory names
-CTP_data$state[which(CTP_data$state == "AS")] <- "American Samoa"
-CTP_data$state[which(CTP_data$state == "PR")] <- "Puerto Rico"
-CTP_data$state[which(CTP_data$state == "GU")] <- "Guam"
-CTP_data$state[which(CTP_data$state == "VI")] <- "Virgin Islands"
-CTP_data$state[which(CTP_data$state == "MP")] <-
-  "Northern Mariana Islands"
-CTP_data$state[which(
-  CTP_data$state != "American Samoa" &
-    CTP_data$state != "Puerto Rico" &
-    CTP_data$state != "Guam" &
-    CTP_data$state != "Virgin Islands" &
-    CTP_data$state != "Northern Mariana Islands"
-)] <-
-  abbr2state(CTP_data$state[(
-    CTP_data$state != "American Samoa" &
-      CTP_data$state != "Puerto Rico" &
-      CTP_data$state != "Guam" &
-      CTP_data$state != "Virgin Islands" &
-      CTP_data$state != "Northern Mariana Islands"
-  )])
+c(
+  "AS" = "American Samoa",
+  "PR" = "Puerto Rico",
+  "GU" = "Guam",
+  "VI" = "Virgin Islands",
+  "MP" = "Northern Mariana Islands"
+) -> excluded_states
+
+CTP_data <- dplyr::filter(CTP_data, ! state %in% names(excluded_states))
+CTP_data <- dplyr::mutate(CTP_data, state = abbr2state(state))
 state_names <- unique(CTP_data$state)
 
 ##################################
@@ -51,20 +92,22 @@ state_names <- unique(CTP_data$state)
 # Initialize a dataframe to hold all the results
 CTP_cleaned <-
   data.frame(
-    date = as.Date(character()),
-    state = character(),
-    cum_cases = double(),
-    cum_totalTests = double(),
-    cum_deaths = double(),
-    daily_casesFilled = double(),
-    daily_deathsFilled = double(),
-    daily_fractionPositive=double(),
+    date                                  = as.Date(character()),
+    state                                 = character(),
+    cum_cases                             = double(),
+    cum_totalTests                        = double(),
+    cum_deaths                            = double(),
+    daily_casesFilled                     = double(),
+    daily_deathsFilled                    = double(),
+    daily_fractionPositive                = double(),
     daily_fractionPositive_15dayMovingAvg = double(),
-    stringsAsFactors = F
+    stringsAsFactors                      = FALSE
   )
 
 # Iterate through each state to clean data and add smoothed fraction positive
+cli_process_start("Applying moving average to states")
 for (i in 1:length(state_names)) {
+
   c(
     "date"             = "date",
     "state"            = "state",
@@ -114,7 +157,7 @@ for (i in 1:length(state_names)) {
       (daily_cases > daily_totalTests)
   )
   daily_totalTests[problem_indices] <- NA
-  
+
   # Compute the 15-day moving average
   daily_case_15dayMovingAvg       <- rep(NA, nrow(temp_data))
   daily_totalTests_15dayMovingAvg <- rep(NA, nrow(temp_data))
@@ -181,6 +224,7 @@ for (i in 1:length(state_names)) {
   )
   
 }
+cli_process_done()
 
 ###################
 ##               ##
@@ -197,16 +241,22 @@ c(
   "daily_fractionPositive_15dayMovingAvg" = "fracpos"
 ) -> final_vars
 
-# The final CTP data frame
+# The final CTP data frame             
 final.df <- CTP_cleaned[, names(final_vars)]
+colnames(final.df) <- final_vars
 
-write_csv(final_vars, "cleaned.csv")
+write_csv(final.df, output_path)
+cli_alert_success("Wrote cleaned data to {.file {output_path}}")
+
+if (is.null(graphs_path))
+  quit()
 
 ########################
 ##                    ##
 ## Visualize the data ##
 ##                    ##
 ########################
+cli_process_start("Producing graphs")
 
 visualizeCasesDeaths.df <-
   CTP_cleaned[, c(
@@ -236,6 +286,9 @@ state_names_sort <- sort(state_names)
 plots <- vector(mode = "list", length = length(state_names_sort))
 
 for (i in 1:length(state_names)) {
+
+  cli_status_update(msg = paste("Producing graphs - ", state_names[i]))
+
   visualizeCasesDeaths.df.long.state <-
     visualizeCasesDeaths.df.long[which(visualizeCasesDeaths.df.long$state ==
                                                      state_names_sort[i]), ]
@@ -265,7 +318,8 @@ for (i in 1:length(state_names)) {
     geom_point(data = filter(
       visualizeFracPos.df.long.state,
       variable == "daily_fractionPositive"
-      )
+      ),
+      na.rm = TRUE
     ) +
     geom_line(
       data = filter(
@@ -287,6 +341,7 @@ for (i in 1:length(state_names)) {
   rm(plotCasesDeaths, plotFracPos)
   
 }
+cli_process_done()
 
 #######################
 ##                   ##
@@ -294,7 +349,14 @@ for (i in 1:length(state_names)) {
 ##                   ##
 #######################
 
+cli_process_start("Saving graphs")
 ggsave(
-  paste0("dataInputs_", Sys.Date(), ".pdf"),
-  marrangeGrob(grob = plots, nrow = 1, ncol = 1)
+  graphs_path,
+  marrangeGrob(grob = plots, nrow = 1, ncol = 1),
+  width  = 8.5,
+  height = 11
 )
+cli_process_done()
+cli_alert_info("Graphs were saved to {.file {graphs_path}}")
+
+warnings()
