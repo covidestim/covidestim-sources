@@ -11,10 +11,7 @@ data: data-products/nytimes-counties.csv \
   data-products/covidtracking-smoothed.csv
 
 clean: 
-	@rm -f data-products/nytimes-counties.csv \
-	  data-products/covidtracking-states.csv \
-	  data-products/nychealth-chd.csv \
-	  data-products/covidtracking-smoothed.csv
+	@rm -f $(data)
 
 # The next three recipes pull all updates from the submodule remotes, and rerun
 # the file_history.sh script to concatenate all the committed versions of the 
@@ -41,4 +38,5 @@ data-products/covidtracking-smoothed.csv: $(cvdt)/data/states_daily_4pm_et.csv \
   R/cleanCTP.R
 	@mkdir -p data-products/
 	git submodule update --remote $(cvdt)
-	Rscript R/cleanCTP.R -o $@ $<
+	Rscript R/cleanCTP.R \
+	  -o $@ --graphs "$(dir $@)/covidtracking-smoothed.pdf" $<
