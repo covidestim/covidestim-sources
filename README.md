@@ -7,7 +7,7 @@ keep this repository in sync with various public data sources (currently, the
 NYTimes, the Covid Tracking Project, and the NYC DPH), a `makefile` to extract
 from these repositories a comprehensive history of all versions of the datasets
 of interest, and to clean the most current versions of this data for use with
-`covidcast`, and an analysis script to analyze and visualize revisioning
+`covidestim`, and an analysis script to analyze and visualize revisioning
 present in some of these data sources. Currently, these scripts include full or
 partial support for the following data sources, but others may be added:
 
@@ -21,7 +21,7 @@ partial support for the following data sources, but others may be added:
   - ✓ reprocessing
   - ✗ analysis (WIP)
   - ✗ graphs (WIP)
-  - ✓ cleaning for `covidcast` runs
+  - ✓ cleaning for `covidestim` runs
 - [nychealth/coronavirus-data](https://github.com/nychealth/coronavirus-data)
   - ✓ reprocessing
   - ✓ analysis (WIP)
@@ -78,7 +78,7 @@ plot_deltas(deltas_prevalence) # Plot of revisioning actions for entire US
 
 # Data cleaning
 
-This repository is also used to clean data used for running `covidcast` on all
+This repository is also used to clean data used for running `covidestim` on all
 US states daily. Right now, the only data source used for these runs is the
 Covid Tracking Project. However, test-positivity data from the Covid Tracking
 Project is subject to the same errata and inconsistencies as the municipalities
@@ -87,10 +87,10 @@ average to their test-positivity data in order to produce input to the model
 that makes sense. The details of this can be found in `R/cleanCTP.R`.
 
 In order to replicate Covid Tracking Project data that was used for a
-`covidcast` run, run the following commands:
+`covidestim` run, run the following commands:
 
 ```bash
-git checkout [hash] # The hash of the commit referenced in the covidcast report
+git checkout [hash] # The hash of the commit referenced in the covidestim report
 make -B data
 ```
 
