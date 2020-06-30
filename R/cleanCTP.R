@@ -3,8 +3,6 @@ library(ggplot2,   warn.conflicts = FALSE)
 library(reshape2,  warn.conflicts = FALSE)
 suppressPackageStartupMessages( library(openintro, warn.conflicts = FALSE) )
 library(dplyr,     warn.conflicts = FALSE)
-library(ggpubr,    warn.conflicts = FALSE)
-library(gridExtra, warn.conflicts = FALSE)
 library(readr,     warn.conflicts = FALSE)
 library(docopt,    warn.conflicts = FALSE)
 library(magrittr,  warn.conflicts = FALSE)
@@ -256,6 +254,9 @@ if (is.null(graphs_path))
 ## Visualize the data ##
 ##                    ##
 ########################
+library(ggpubr)
+library(gridExtra)
+
 cli_process_start("Producing graphs")
 
 visualizeCasesDeaths.df <-
