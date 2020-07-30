@@ -171,6 +171,8 @@ for (i in 1:length(state_names)) {
   temp_data$daily_fractionPositive <-
     daily_cases / daily_totalTests
 
+  temp_data$daily_totalTests <- tidyr::replace_na(daily_totalTests, 0)
+
   # Calculate smooth fraction positive from moving average
   temp_data$daily_fractionPositive_15dayMovingAvg <-
     daily_case_15dayMovingAvg / daily_totalTests_15dayMovingAvg
@@ -236,7 +238,8 @@ c(
   "state"                                 = "state",
   "daily_casesFilled"                     = "cases",
   "daily_deathsFilled"                    = "deaths",
-  "daily_fractionPositive_15dayMovingAvg" = "fracpos"
+  "daily_fractionPositive_15dayMovingAvg" = "fracpos",
+  "daily_totalTests"                      = "volume"
 ) -> final_vars
 
 # The final CTP data frame             
