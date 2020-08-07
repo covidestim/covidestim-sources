@@ -1,6 +1,5 @@
 library(lubridate, warn.conflicts = FALSE)
 library(ggplot2,   warn.conflicts = FALSE)
-suppressPackageStartupMessages( library(openintro, warn.conflicts = FALSE) )
 library(dplyr,     warn.conflicts = FALSE)
 library(readr,     warn.conflicts = FALSE)
 library(docopt,    warn.conflicts = FALSE)
@@ -76,8 +75,11 @@ c(
   "MP" = "Northern Mariana Islands"
 ) -> excluded_states
 
+statesMap <- c(state.name, "District of Columbia")
+names(statesMap) <- c(state.abb, "DC")
+
 CTP_data <- dplyr::filter(CTP_data, ! state %in% names(excluded_states))
-CTP_data <- dplyr::mutate(CTP_data, state = abbr2state(state))
+CTP_data <- dplyr::mutate(CTP_data, state = statesMap[state])
 state_names <- unique(CTP_data$state)
 
 ##################################
