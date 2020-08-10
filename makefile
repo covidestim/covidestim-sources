@@ -15,8 +15,8 @@ clean:
 
 # The next three recipes pull all updates from the submodule remotes, and rerun
 # the file_history.sh script to concatenate all the committed versions of the 
-# two files and append the commit date to the end of each row
-data-products/nytimes-counties.csv: $(nyt)/us-counties.csv src/file_history.sh
+# three files and append the commit date to the end of each row
+data-products/nytimes-counties-history.csv: $(nyt)/us-counties.csv src/file_history.sh
 	@mkdir -p data-products/
 	git submodule update --remote $(nyt)
 	./src/file_history.sh $(nyt) us-counties.csv > $@
@@ -40,3 +40,10 @@ data-products/covidtracking-smoothed.csv: $(cvdt)/data/states_daily_4pm_et.csv \
 	git submodule update --remote $(cvdt)
 	Rscript R/cleanCTP.R \
 	  -o $@ --graphs "$(dir $@)/covidtracking-smoothed.pdf" $<
+
+# This recipe produces cleaned county-level data from the NYTimes repo
+data-products/nytimes-counties.csv: $(nyt)/us-counties.csv \
+  R/cleanNYT-counties.R
+	@mkdir -p data-products/
+	git submodule update --remote $(nyt)
+	Rscript R/cleanNYT-counties.R -o $@ $<
