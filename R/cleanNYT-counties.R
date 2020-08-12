@@ -37,13 +37,32 @@ cli_process_start("Loading NYTimes data from {.file {input_path}}")
 nytimes <- read_csv(input_path, col_types = col_types.nytimes)
 cli_process_done()
 
-# Filter out any areas that don't have a fips code and aren't the "merged"
-# NYC synthetic FIPS. This is detailed on the GitHub geogrpahic exceptions
+# Filter out any areas that don't have a fips code and aren't the "merged" NYC
+# synthetic FIPS. This is detailed on the NYTimes GitHub geogrpahic exceptions
 # page.
 nytimes <- filter(nytimes, !is.na(fips) || county == 'New York City')
 nytimes <- mutate(nytimes, fips = ifelse(county == 'New York City', "00000", fips))
 
-write_csv(nytimes, output_path)
+cli_process_start("Computing marginal cases and removing negative values")
+nytimes <- group_by(nytimes, fips) %>%
+  mutate_at(c('cases', 'deaths'), ~. - lag(., 1, default = 0)) %>%
+  mutate_at(c('cases', 'deaths'), pmax, 0)
+cli_process_done()
+
+nytimes <- select(nytimes, date, fips, cases, deaths)
+
+badFIPS <- group_by(nytimes, fips) %>%
+  summarize(n=n(), min_date = min(date), max_date = max(date),
+            validDateRange = n-1 == as.double(difftime(max_date, min_date)),
+            noNAs = !any(is.na(cases) | is.na(deaths))) %>%
+  filter(!validDateRange | !noNAs) %>%
+  pull(fips)
+
+cli_alert_info("Removed {length(badFIPS)} bad FIPS codes")
+
+filtered <- filter(nytimes, !(fips %in% badFIPS), !is.na(fips))
+
+write_csv(filtered, output_path)
 
 cli_alert_success("Wrote cleaned data to {.file {output_path}}")
 
