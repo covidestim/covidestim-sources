@@ -107,6 +107,8 @@ CTP_cleaned <-
 cli_process_start("Applying moving average to states")
 for (i in 1:length(state_names)) {
 
+  state_name <- state_names[i]
+
   c(
     "date"             = "date",
     "state"            = "state",
@@ -124,7 +126,7 @@ for (i in 1:length(state_names)) {
   # audit resulting in a downward revision of the cumulative count), we adjust
   # the difference of that and subsequent days to zero until the cumulative
   # count rises above the previous maximum cumulative count, such that the
-  # cumulative count increasesd  monotonically.
+  # cumulative count increasesd monotonically.
   cum_cases  <- c(0, temp_data$cum_cases)
   cum_deaths <- c(0, temp_data$cum_deaths)
   for (i in 2:length(cum_cases)) {
@@ -209,6 +211,16 @@ for (i in 1:length(state_names)) {
       0.9,
       temp_data$daily_fractionPositive_15dayMovingAvg
     )
+
+  ######################
+  ##                  ##
+  ## Correct bad data ##
+  ##                  ##
+  ######################
+
+  # Colorado has a few NA testing-volume entries in their first few days
+  if (identical(state_name, 'Colorado'))
+    temp_data <- filter(temp_data, date > as.Date("2020-03-11"))
 
   #####################
   ##                 ##
