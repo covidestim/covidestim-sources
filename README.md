@@ -11,21 +11,26 @@ of interest, and to clean the most current versions of this data for use with
 present in some of these data sources. Currently, these scripts include full or
 partial support for the following data sources, but others may be added:
 
+- [CSSEGISandData/COVID-19](https://github.com/CSSEGISandData/COVID-19)  
+  JHU's county-level case and death data
+  - [ ] cleaning
+  - [ ] analysis
+  - [ ] graphs
 - [nytimes/covid-19-data](https://github.com/marcusrussi/reporting-delay-data)
   NYTimes' county-level case and death data
-  - ✓ reprocessing
-  - ✓ analysis
-  - ✓ graphs
+  - [x] cleaning
+  - [x] analysis
+  - [x] graphs
 - [COVID19Tracking/covid-tracking-data](https://github.com/COVID19Tracking/covid-tracking-data)
   The COVID Tracking Project's daily-aggregated state-level data
-  - ✓ reprocessing
-  - ✗ analysis (WIP)
-  - ✗ graphs (WIP)
-  - ✓ cleaning for `covidestim` runs
+  - [x] cleaning
+  - [ ] analysis (WIP)
+  - [ ] graphs (WIP)
+  - [x] cleaning for `covidestim` runs
 - [nychealth/coronavirus-data](https://github.com/nychealth/coronavirus-data)
-  - ✓ reprocessing
-  - ✓ analysis (WIP)
-  - ✓ graphs (WIP)
+  - [x] cleaning
+  - [x] analysis (WIP)
+  - [x] graphs (WIP)
 
 ## Usage
 
