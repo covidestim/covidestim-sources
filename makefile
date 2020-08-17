@@ -50,10 +50,11 @@ data-products/nytimes-counties.csv: $(nyt)/us-counties.csv \
 	Rscript R/cleanNYT-counties.R -o $@ $<
 
 # This recipe produces cleaned county-level data from the JHU repo
-data-products/jhu-counties.csv: $(jhu_data)/us-counties.csv \
-  R/cleanJHU-counties.R
+data-products/jhu-counties.csv: R/cleanJHU-counties.R \
+  $(jhu_data)/time_series_covid19_confirmed_US.csv \
+  $(jhu_data)/time_series_covid19_deaths_US.csv
 	@mkdir -p data-products/
 	git submodule update --remote $(jhu)
-	Rscript R/cleanJHU-counties.R -o $@ \
+	Rscript $< -o $@ \
 	  --cases  $(jhu_data)/time_series_covid19_confirmed_US.csv \
 	  --deaths $(jhu_data)/time_series_covid19_deaths_US.csv
