@@ -1,7 +1,9 @@
 # Paths to the three Git submodules containing nytimes, covidtracking, nyc data
-nyt  := data-sources/nytimes-data
-cvdt := data-sources/covidtracking-data
-nyc  := data-sources/nychealth-data
+nyt       := data-sources/nytimes-data
+cvdt      := data-sources/covidtracking-data
+nyc       := data-sources/nychealth-data
+jhu       := data-sources/jhu-data
+jhu_data  := data-sources/jhu-data/csse_covid_19_data/csse_covid_19_time_series
 
 # Target for the three history files we want to produce, and the cleaned
 # cases/deaths/test-positivity data file (using Ken's script)
@@ -46,3 +48,13 @@ data-products/nytimes-counties.csv: $(nyt)/us-counties.csv \
 	@mkdir -p data-products/
 	git submodule update --remote $(nyt)
 	Rscript R/cleanNYT-counties.R -o $@ $<
+
+# This recipe produces cleaned county-level data from the JHU repo
+data-products/jhu-counties.csv: R/cleanJHU-counties.R \
+  $(jhu_data)/time_series_covid19_confirmed_US.csv \
+  $(jhu_data)/time_series_covid19_deaths_US.csv
+	@mkdir -p data-products/
+	git submodule update --remote $(jhu)
+	Rscript $< -o $@ \
+	  --cases  $(jhu_data)/time_series_covid19_confirmed_US.csv \
+	  --deaths $(jhu_data)/time_series_covid19_deaths_US.csv
