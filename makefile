@@ -36,11 +36,17 @@ data-products/nychealth-chd.csv: $(nyc)/case-hosp-death.csv src/file_history.sh
 
 # This recipe produces smoothed test-positivty data from the Covid Tracking
 # Project
-data-products/covidtracking-smoothed.csv: $(cvdt)/data/states_daily_4pm_et.csv \
-  R/cleanCTP.R
+# data-products/covidtracking-smoothed.csv: $(cvdt)/data/states_daily_4pm_et.csv \
+#   R/cleanCTP.R
+# 	@mkdir -p data-products/
+# 	git submodule update --remote $(cvdt)
+# 	Rscript R/cleanCTP.R -o $@ $<
+
+data-products/covidtracking-smoothed.csv: R/cleanCTP.R
 	@mkdir -p data-products/
-	git submodule update --remote $(cvdt)
-	Rscript R/cleanCTP.R -o $@ $<
+	curl -o ctp_tmp.csv 'https://api.covidtracking.com/v1/states/daily.csv'
+	Rscript R/cleanCTP.R -o $@ ctp_tmp.csv
+	@rm -f ctp_tmp.csv
 
 # This recipe produces cleaned county-level data from the NYTimes repo
 data-products/nytimes-counties.csv: $(nyt)/us-counties.csv \

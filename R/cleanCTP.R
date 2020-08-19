@@ -168,6 +168,12 @@ for (i in 1:length(state_names)) {
     Idxs     <- startIdx:endIdx
     daily_case_15dayMovingAvg[k]       <- mean(daily_cases[Idxs], na.rm=T)
     daily_totalTests_15dayMovingAvg[k] <- mean(daily_totalTests[Idxs], na.rm=T)
+
+    if (is.nan(daily_case_15dayMovingAvg[k]))
+      daily_case_15dayMovingAvg[k] <- 0
+
+    if (is.nan(daily_totalTests_15dayMovingAvg[k]))
+      daily_totalTests_15dayMovingAvg[k] <- 0
   }
   
   # Calculate raw fraction positive
