@@ -36,7 +36,7 @@ cols(
   FIPS = col_character()
 ) -> col_types.jhuCases
 
-cols_only(
+cols(
   FIPS = col_character()
 ) -> col_types.jhuDeaths
 
@@ -54,7 +54,7 @@ reformat <- function(df, data_type = 'cases') {
 
   # Pivot just the columns that are dates. Name the 'value' key either 'cases'
   # or 'deaths'
-  tidyr::pivot_longer(cases, matches(date_regex),
+  tidyr::pivot_longer(df, matches(date_regex),
                       names_to = 'date', values_to = data_type) %>%
 
   # Get rid of unneeded columns. The I() construct forces `data_type` to be
