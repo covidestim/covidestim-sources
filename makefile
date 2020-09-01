@@ -44,7 +44,7 @@ data-products/nychealth-chd.csv: $(nyc)/case-hosp-death.csv src/file_history.sh
 
 data-products/covidtracking-smoothed.csv: R/cleanCTP.R
 	@mkdir -p data-products/
-	curl -o ctp_tmp.csv 'https://api.covidtracking.com/v1/states/daily.csv'
+	wget -O ctp_tmp.csv 'https://api.covidtracking.com/v1/states/daily.csv'
 	Rscript R/cleanCTP.R -o $@ ctp_tmp.csv
 	@rm -f ctp_tmp.csv
 
