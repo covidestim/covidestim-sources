@@ -107,8 +107,12 @@ diffed <- group_by(joined, fips) %>% arrange(date) %>%
   arrange(fips)
 pd()
 
+ps("Removing counties with fewer than 60 days' observations")
+shortCountiesStripped <- group_by(diffed, fips) %>% filter(n() > 60) %>% ungroup
+pd()
+
 ps("Writing cleaned data to {.file {output_path}}")
-write_csv(diffed, output_path)
+write_csv(shortCountiesStripped, output_path)
 pd()
 
 warnings()
