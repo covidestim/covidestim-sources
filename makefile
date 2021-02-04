@@ -60,7 +60,6 @@ data-products/jhu-counties.csv: R/cleanJHU-counties.R \
   $(jhu_data)/time_series_covid19_confirmed_US.csv \
   $(jhu_data)/time_series_covid19_deaths_US.csv
 	@mkdir -p data-products/
-	git submodule update --remote $(jhu)
 	Rscript $< -o $@ \
 	  --cases  $(jhu_data)/time_series_covid19_confirmed_US.csv \
 	  --deaths $(jhu_data)/time_series_covid19_deaths_US.csv
