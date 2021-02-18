@@ -9,12 +9,13 @@ library(stringr,   warn.conflicts = FALSE)
 'JHU County-data Cleaner
 
 Usage:
-  cleanJHU-counties.R -o <path> --cases <path> --deaths <path>
+  cleanJHU-counties.R -o <path> [--writeRejects <path>] --cases <path> --deaths <path>
   cleanJHU-counties.R (-h | --help)
   cleanJHU-counties.R --version
 
 Options:
   -o <path>             Path to output cleaned data to.
+  --writeRejects <path>  Path to output a .csv of rejected FIPS [fips, code, reason]
   --cases <path>        Path to the cases data 
   --deaths <path>       Path to the deaths data
   <path>                Input .csv from the JHU GitHub
@@ -28,9 +29,10 @@ pd <- cli_process_done
 
 args   <- docopt(doc, version = 'cleanJHU-counties 0.1')
 
-output_path <- args$o
-cases_path  <- args$cases
-deaths_path <- args$deaths
+output_path <-  args$o
+cases_path  <-  args$cases
+deaths_path <-  args$deaths
+rejects_path <- args$writeRejects
 
 cols(
   FIPS = col_character()
@@ -74,10 +76,13 @@ reformat <- function(df, data_type = 'cases') {
 # But, don't allow for any days to have negative case/death counts.
 nonzeroDiff <- function(vec) pmax(0, vec - lag(vec, default = 0))
 
-filterBadFips <- function(df)
+filterStateFips <- function(df)
   filter(df,
          !is.na(fips),                      # No invalid fips codes
-         str_length(fips) == 5,             # No states or territories
+         str_length(fips) == 5)             # No states or territories
+
+filterBannedFips <- function(df)
+  filter(df,
          !str_detect(fips, "^800[0-5]\\d"), # The "Out of [statename]" tracts
          !str_detect(fips, "^900[0-5]\\d"), # The "Unassigned" tracts
          !str_detect(fips, "^60\\d{3}"),    # AS
@@ -91,8 +96,29 @@ filterBadFips <- function(df)
          !str_detect(fips, "^99999$"))      # Grand Princess
 
 ps("Reformatting case/death data, removing bad FIPS codes")
-rcases  <- reformat(cases, 'cases')   %>% filterBadFips
-rdeaths <- reformat(deaths, 'deaths') %>% filterBadFips
+rcases  <- reformat(cases, 'cases')  
+rdeaths <- reformat(deaths, 'deaths')
+
+startingFIPS = unique(rcases$fips)
+  rcases <- rcases %>% filterBannedFips
+  rdeaths <- rdeaths %>% filterBannedFips
+endingFIPS = unique(rcases$fips)
+rejects <- tibble(
+  fips = setdiff(startingFIPS, endingFIPS),
+  code = 'EXCLUDE_LIST',
+  reason = "On the list of excluded counties"
+)
+
+startingFIPS = unique(rcases$fips)
+  rcases <- rcases %>% filterStateFips
+  rdeaths <- rdeaths %>% filterStateFips
+endingFIPS = unique(rcases$fips)
+rejects <- bind_rows(rejects, tibble(
+  fips = setdiff(startingFIPS, endingFIPS),
+  code = 'STATE',
+  reason = "Was a state or territory"
+))
+
 pd()
 
 ps("Joining cases and deaths data")
@@ -108,11 +134,29 @@ diffed <- group_by(joined, fips) %>% arrange(date) %>%
 pd()
 
 ps("Removing counties with fewer than 60 days' observations")
+startingFIPS <- unique(diffed$fips)
+
 shortCountiesStripped <- group_by(diffed, fips) %>% filter(n() > 60) %>% ungroup
+
+endingFIPS <- unique(shortCountiesStripped$fips)
+rejects <- bind_rows(
+  rejects,
+  tibble(
+    fips = setdiff(startingFIPS, endingFIPS),
+    code = 'UNDER60',
+    reason = "Fewer than 60 days of data"
+  )
+)
 pd()
 
 ps("Writing cleaned data to {.file {output_path}}")
 write_csv(shortCountiesStripped, output_path)
 pd()
+
+if (!identical(args$writeRejects, FALSE)) {
+  ps("Writing rejected counties to {.file {rejects_path}}")
+  write_csv(rejects, rejects_path)
+  pd()
+}
 
 warnings()

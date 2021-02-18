@@ -13,7 +13,7 @@ partial support for the following data sources, but others may be added:
 
 - [CSSEGISandData/COVID-19](https://github.com/CSSEGISandData/COVID-19)  
   JHU's county-level case and death data
-  - [ ] cleaning
+  - [x] cleaning for `covidestim` runs
   - [ ] analysis
   - [ ] graphs
 - [nytimes/covid-19-data](https://github.com/marcusrussi/reporting-delay-data)
@@ -44,15 +44,6 @@ git submodule init
 git submodule update
 make -B data # Generates the history files into data-products/
 ```
-
-Running `make data` will generate, into `data-products/`, the history of
-NYTimes' [county-level confirmed-cases
-data](https://github.com/nytimes/covid-19-data), the history of the Covid
-Tracking Project's [state-level
-data](https://github.com/covid19Tracking/covid-tracking-data), and the history
-of the NYC Health Department's
-[case-hosp-death](https://github.com/nychealth/coronavirus-data/blob/master/case-hosp-death.csv)
-data.
 
 An accompanying R script, `R/revision_analysis.R` provides utilities to analyze
 and vizualize the history of this data. Currently, it is configued for
