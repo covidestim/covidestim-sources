@@ -1,5 +1,6 @@
 # Path to the JHU git submodule's timeseries directory
 jhu_data  := data-sources/jhu-data/csse_covid_19_data/csse_covid_19_time_series
+jhu_reports := data-sources/jhu-data/csse_covid_19_data/csse_covid_19_daily_reports_us
 
 # Short for data-products
 dp := data-products
@@ -39,3 +40,11 @@ $(dp)/jhu-counties.csv $(dp)/jhu-counties-rejects.csv: R/cleanJHU-counties.R \
 	  --writeRejects $(dp)/jhu-counties-rejects.csv \
 	  --cases  $(jhu_data)/time_series_covid19_confirmed_US.csv \
 	  --deaths $(jhu_data)/time_series_covid19_deaths_US.csv
+
+$(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv: R/cleanJHU-states.R \
+  $(jhu_data)/blah.csv \
+  $(jhu_data)/blah.csv
+	@mkdir -p data-products/
+	Rscript $< -o $(dp)/jhu-states.csv \
+	  --writeRejects $(dp)/jhu-states-rejects.csv \
+	  --reportsPath  $(jhu_reports)
