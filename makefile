@@ -42,8 +42,7 @@ $(dp)/jhu-counties.csv $(dp)/jhu-counties-rejects.csv: R/cleanJHU-counties.R \
 	  --deaths $(jhu_data)/time_series_covid19_deaths_US.csv
 
 $(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv: R/cleanJHU-states.R \
-  $(jhu_data)/blah.csv \
-  $(jhu_data)/blah.csv
+  $(jhu_reports)
 	@mkdir -p data-products/
 	Rscript $< -o $(dp)/jhu-states.csv \
 	  --writeRejects $(dp)/jhu-states-rejects.csv \
