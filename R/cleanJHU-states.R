@@ -34,19 +34,34 @@ reports_path <- args$reportsPath
 rejects_path <- args$writeRejects
 
 cols_only(
-  Province_State = col_character(),
-  Confirmed = col_double(),
-  Deaths = col_double()
+  Province_State     = col_character(),
+  Confirmed          = col_double(),
+  Deaths             = col_double(),
+  Total_Test_Results = col_double()
 ) -> colSpec
+
+cols_only(
+  Province_State     = col_character(),
+  Confirmed          = col_double(),
+  Deaths             = col_double()
+) -> colSpecBackup
 
 reader <- function(fname) {
   ps("Reading daily report {.file {basename(fname)}}")
-  d <- read_csv(fname, col_types = colSpec)
+  d <- tryCatch(
+    read_csv(fname, col_types = colSpec),
+    warning = function(c) read_csv(fname, col_types = colSpecBackup)
+  )
+
+  if (!"Total_Test_Results" %in% names(d))
+    d <- mutate(d, Total_Test_Results = 0)
+
   d <- rename(
     d,
     state  = Province_State,
     cases  = Confirmed,
-    deaths = Deaths
+    deaths = Deaths,
+    volume = Total_Test_Results
   )
   pd()
   d
@@ -79,8 +94,13 @@ d <- group_by(d, state) %>%
   mutate(
     # Can't have cases or deaths decrease, hence the max()
     cases = pmax(cases - lag(cases, default = 0), 0),
-    deaths = pmax(deaths - lag(deaths, default = 0), 0)
+    deaths = pmax(deaths - lag(deaths, default = 0), 0),
+    volume = pmax(volume - lag(volume, default = 0), 0),
+    fracpos = ifelse(volume > 0, cases/volume, 0)
   )
+
+# Reorder to maintain parity with .csv structure for CTP
+d <- select(d, date, state, cases, deaths, fracpos, volume)
 
 ps("Removing counties with fewer than 60 days' observations")
 
