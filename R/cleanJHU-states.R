@@ -79,7 +79,7 @@ d <- group_by(d, state) %>%
   mutate(
     # Can't have cases or deaths decrease, hence the max()
     cases = pmax(cases - lag(cases, default = 0), 0),
-    deaths = pmax(deaths - lag(deaths, default = 0))
+    deaths = pmax(deaths - lag(deaths, default = 0), 0)
   )
 
 ps("Removing counties with fewer than 60 days' observations")
