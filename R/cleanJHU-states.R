@@ -29,6 +29,7 @@ ps <- cli_process_start
 pd <- cli_process_done
 
 args <- docopt(doc, version = 'cleanJHU-states 0.1')
+print(args)
 
 output_path  <- args$o
 reports_path <- args$reportsPath
@@ -57,7 +58,7 @@ cols_only(
   volume = col_double()
 ) -> colSpecPrefill
 
-if (!identical(args$prefill, FALSE)) {
+if (!is.null(args$prefill)) {
   ps("Reading prefill file {.file {prefill_path}}")
   prefill <- read_csv(prefill_path, col_types = colSpecPrefill)
   pd()
@@ -138,7 +139,7 @@ pd()
 final <- shortStatesStripped
 
 # Handle the --prefill flag
-if (!identical(args$prefill, FALSE)) {
+if (!is.null(args$prefill)) {
   cli_alert_info("Performing prefill scaling")
 
   JHU <- final
@@ -220,7 +221,7 @@ ps("Writing cleaned data to {.file {output_path}}")
 write_csv(final, output_path)
 pd()
 
-if (!identical(args$writeRejects, FALSE)) {
+if (!is.null(args$writeRejects)) {
   ps("Writing rejected counties to {.file {rejects_path}}")
   write_csv(rejects, rejects_path)
   pd()
