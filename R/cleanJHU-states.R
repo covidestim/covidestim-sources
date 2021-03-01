@@ -11,13 +11,14 @@ library(purrr,     warn.conflicts = FALSE)
 'JHU State-data Cleaner
 
 Usage:
-  cleanJHU-states.R -o <path> [--writeRejects <path>] --reportsPath <path>
+  cleanJHU-states.R -o <path> [--writeRejects <path>] [--prefill <path>] --reportsPath <path>
   cleanJHU-states.R (-h | --help)
   cleanJHU-states.R --version
 
 Options:
   -o <path>              Path to output cleaned data to.
   --writeRejects <path>  Path to output a .csv of rejected FIPS [fips, code, reason]
+  --prefill <path>       Prepend JHU case-death data using data from <path> [date, state, cases, deaths, fracpos, volume]
   --reportsPath <path>   Directory where the daily US reports live inside the JHU repo
   -h --help              Show this screen.
   --version              Show version.
@@ -32,6 +33,7 @@ args <- docopt(doc, version = 'cleanJHU-states 0.1')
 output_path  <- args$o
 reports_path <- args$reportsPath
 rejects_path <- args$writeRejects
+prefill_path <- args$prefill
 
 cols_only(
   Province_State     = col_character(),
@@ -45,6 +47,21 @@ cols_only(
   Confirmed          = col_double(),
   Deaths             = col_double()
 ) -> colSpecBackup
+
+cols_only(
+  date   = col_date(format = ""),
+  state  = col_character(),
+  cases  = col_double(),
+  deaths = col_double(),
+  fracpos= col_double(),
+  volume = col_double()
+) -> colSpecPrefill
+
+if (!identical(args$prefill, FALSE)) {
+  ps("Reading prefill file {.file {prefill_path}}")
+  prefill <- read_csv(prefill_path, col_types = colSpecPrefill)
+  pd()
+}
 
 reader <- function(fname) {
   ps("Reading daily report {.file {basename(fname)}}")
@@ -102,7 +119,7 @@ d <- group_by(d, state) %>%
 # Reorder to maintain parity with .csv structure for CTP
 d <- select(d, date, state, cases, deaths, fracpos, volume)
 
-ps("Removing counties with fewer than 60 days' observations")
+ps("Removing states with fewer than 60 days' observations")
 
 startingStates <- unique(d$state)
 shortStatesStripped <- group_by(d, state) %>% filter(n() > 60) %>% ungroup
@@ -118,8 +135,89 @@ rejects <- bind_rows(
 )
 pd()
 
+final <- shortStatesStripped
+
+# Handle the --prefill flag
+if (!identical(args$prefill, FALSE)) {
+  cli_alert_info("Performing prefill scaling")
+
+  JHU <- final
+  CTP <- prefill # Assuming prefill source is CTP
+
+  # Find first day-of-data for each state in JHU dataset
+  JHUmindates <- JHU %>% group_by(state) %>%
+    summarize(date = min(date))
+
+  ps("Calculating per-state, per-outcome scaling factors")
+  # Calculate the scaling factor neccessary for the cumulative
+  # cases/deaths of CTP data to match JHU's ccases/cdeaths on the
+  # first day of intersection
+  JHUscale <- JHUmindates %>%
+    left_join(
+      JHU %>% select(state, date, cases, deaths),
+      by = c('state', 'date')
+    ) %>%
+    left_join(
+      CTP %>%
+        select(state, date, cases, deaths) %>%
+        group_by(state) %>%
+        # incidence -> cumulative incidence
+        mutate_at(c('cases', 'deaths'), cumsum) %>%
+        ungroup,
+      by     = c('state', 'date'),
+      suffix = c('.jhu', '.ctp')
+    ) %>%
+    transmute(
+      state,
+      cases.scale  = case_when(
+        is.na(cases.ctp) ~ 1, # When there's no CTP data (Puerto Rico)
+        cases.ctp == 0   ~ 1, # Prevent /0 error
+        TRUE             ~ cases.jhu/cases.ctp
+      ),
+      deaths.scale = case_when(
+        is.na(deaths.ctp) ~ 1,# ""
+        deaths.ctp == 0   ~ 1,# ""
+        TRUE              ~ deaths.jhu/deaths.ctp
+      )
+    )
+  pd()
+
+  # Perform the scaling operation on all CTP days that are at least
+  # 1 day before the first day of intersection. Floor everything
+  # to keep it integer-valued.
+  ps("Scaling")
+  scaled_prefill <- CTP %>%
+    left_join(JHUscale, by = 'state') %>%
+    left_join(JHUmindates, by = 'state', suffix = c('', '.max')) %>%
+    filter(date <= date.max) %>%
+    transmute(
+      date,
+      state,
+      cases  = floor(cases * cases.scale),
+      deaths = floor(deaths * deaths.scale),
+      fracpos,
+      volume
+    )
+  pd()
+
+  # Attach the scaled CTP rows and sort again.
+  # Get rid of the first day of JHU data for each state. This is 
+  # because it's a data dump, and will instead be filled in by the CTP
+  # data
+  prefilled <- bind_rows(
+    scaled_prefill,
+    shortStatesStripped %>%
+      group_by(state) %>% filter(date != min(date)) %>% ungroup
+  ) %>%
+    arrange(state, date)
+
+  final <<- prefilled
+
+  cli_alert_success("Prefill complete")
+}
+
 ps("Writing cleaned data to {.file {output_path}}")
-write_csv(shortStatesStripped, output_path)
+write_csv(final, output_path)
 pd()
 
 if (!identical(args$writeRejects, FALSE)) {

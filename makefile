@@ -1,13 +1,13 @@
 # Path to the JHU git submodule's timeseries directory
-jhu_data  := data-sources/jhu-data/csse_covid_19_data/csse_covid_19_time_series
+jhu_data    := data-sources/jhu-data/csse_covid_19_data/csse_covid_19_time_series
 jhu_reports := data-sources/jhu-data/csse_covid_19_data/csse_covid_19_daily_reports_us
 
-# Short for data-products
+# Short for data-products, data-sources
 dp := data-products
+ds := data-sources
 
-# Target for the three history files we want to produce, and the cleaned
-# cases/deaths/test-positivity data file (using Ken's script)
-data: $(dp)/covidtracking-smoothed.csv $(dp)/jhu-counties.csv
+# Target for the three case/death data files we want to produce
+data: $(dp)/covidtracking-smoothed.csv $(dp)/jhu-counties.csv $(dp)/jhu-states.csv
 
 clean: 
 	@rm -f $(data)
@@ -45,5 +45,6 @@ $(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv: R/cleanJHU-states.R \
   $(jhu_reports)
 	@mkdir -p data-products/
 	Rscript $< -o $(dp)/jhu-states.csv \
+	  --prefill $(ds)/CTP-backfill-archive.csv \
 	  --writeRejects $(dp)/jhu-states-rejects.csv \
 	  --reportsPath  $(jhu_reports)
