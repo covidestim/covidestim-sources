@@ -44,18 +44,22 @@ ps("Reading case/death file {.file {data_path}}")
 d <- read_csv(data_path, col_types = colSpec)
 pd()
 
+ps("Removing NA-valued fips (Unknown & Geographic exceptions)")
+d <- filter(d, !is.na(fips))
+pd()
+
 cli_alert_info("Moving from cumulative counts to incidence")
 d <- arrange(d, fips, date) %>% group_by(fips) %>%
   mutate(
     # Can't have cases or deaths decrease, hence the max()
-    cases = pmax(cases - lag(cases, default = 0), 0),
+    cases  = pmax(cases - lag(cases, default = 0), 0),
     deaths = pmax(deaths - lag(deaths, default = 0), 0)
   )
 
 ps("Removing counties with fewer than 60 days' observations")
 
 startingFIPS <- unique(d$fips)
-shortFIPSStripped <- group_by(d, fips) %>% filter(n() > 60) %>% ungroup
+shortFIPSStripped <- group_by(d, fips) %>% filter(n() >= 60) %>% ungroup
 
 endingFIPS <- unique(shortFIPSStripped$fips)
 rejects <- tibble(
