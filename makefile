@@ -2,6 +2,9 @@
 jhu_data  := data-sources/jhu-data/csse_covid_19_data/csse_covid_19_time_series
 jhu_reports := data-sources/jhu-data/csse_covid_19_data/csse_covid_19_daily_reports_us
 
+# Path to NYTimes submodule
+nyt := data-sources/nytimes-data
+
 # Short for data-products
 dp := data-products
 
@@ -47,3 +50,10 @@ $(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv: R/cleanJHU-states.R \
 	Rscript $< -o $(dp)/jhu-states.csv \
 	  --writeRejects $(dp)/jhu-states-rejects.csv \
 	  --reportsPath  $(jhu_reports)
+
+$(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv: R/cleanNYT-counties.R \
+  $(nyt)/us-counties.csv
+	@mkdir -p data-products/
+	Rscript $< -o $(dp)/nytimes-counties.csv \
+	  --writeRejects $(dp)/nytimes-counties-rejects.csv \
+	  $(nyt)/us-counties.csv
