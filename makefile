@@ -6,6 +6,7 @@ jhu_reports := data-sources/jhu-data/csse_covid_19_data/csse_covid_19_daily_repo
 nyt := data-sources/nytimes-data
 
 # Short for data-products, data-sources
+>>>>>>> f530dd4dfa6b308e7497f9ee6624fafe9b923492
 dp := data-products
 ds := data-sources
 
