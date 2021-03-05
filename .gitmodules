@@ -1,12 +1,6 @@
 [submodule "covid-19-data"]
 	path = data-sources/nytimes-data
 	url = https://github.com/nytimes/covid-19-data
-[submodule "covid-tracking-data"]
-	path = data-sources/covidtracking-data
-	url = https://github.com/COVID19Tracking/covid-tracking-data
-[submodule "data-sources/nychealth-data"]
-	path = data-sources/nychealth-data
-	url = https://github.com/nychealth/coronavirus-data
 [submodule "data-sources/jhu-data"]
 	path = data-sources/jhu-data
 	url = https://github.com/CSSEGISandData/COVID-19
