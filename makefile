@@ -44,6 +44,7 @@ $(dp)/jhu-counties.csv $(dp)/jhu-counties-rejects.csv: R/cleanJHU-counties.R \
 	  --cases  $(jhu_data)/time_series_covid19_confirmed_US.csv \
 	  --deaths $(jhu_data)/time_series_covid19_deaths_US.csv
 
+# JHU state data, prefilled with archived covid tracking project data
 $(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv: R/cleanJHU-states.R \
   $(jhu_reports)
 	@mkdir -p data-products/
@@ -51,6 +52,31 @@ $(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv: R/cleanJHU-states.R \
 	  --prefill $(ds)/CTP-backfill-archive.csv \
 	  --writeRejects $(dp)/jhu-states-rejects.csv \
 	  --reportsPath  $(jhu_reports)
+
+# JHU state data, prefilled with archived covid tracking project data, however
+# the "splice date" can be chosen here. For instance,
+# 
+#   `make data-products/jhu-states-spliced-2020-10-01.csv`
+#
+# will splice the data on October 1st: October 2nd will be the first day of
+# JHU data.
+$(dp)/jhu-states-spliced-%.csv $(dp)/jhu-states-spliced-%-rejects.csv: R/cleanJHU-states.R \
+  $(jhu_reports)
+	@mkdir -p data-products/
+	Rscript $< -o $(dp)/jhu-states-spliced-$*.csv \
+	  --prefill $(ds)/CTP-backfill-archive.csv \
+	  --splicedate $* \
+	  --writeRejects $(dp)/jhu-states-spliced-$*-rejects.csv \
+	  --reportsPath  $(jhu_reports)
+
+# JHU state data, no prefill
+$(dp)/jhu-states-noprefill.csv $(dp)/jhu-states-noprefill-rejects.csv: R/cleanJHU-states.R \
+  $(jhu_reports)
+	@mkdir -p data-products/
+	Rscript $< -o $(dp)/jhu-states-noprefill.csv \
+	  --writeRejects $(dp)/jhu-states-rejects.csv \
+	  --reportsPath  $(jhu_reports)
+
 
 $(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv: R/cleanNYT-counties.R \
   $(nyt)/us-counties.csv

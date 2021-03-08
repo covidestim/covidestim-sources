@@ -11,7 +11,7 @@ library(purrr,     warn.conflicts = FALSE)
 'JHU State-data Cleaner
 
 Usage:
-  cleanJHU-states.R -o <path> [--writeRejects <path>] [--prefill <path>] --reportsPath <path>
+  cleanJHU-states.R -o <path> [--writeRejects <path>] [--prefill <path>] [--splicedate <date>] --reportsPath <path>
   cleanJHU-states.R (-h | --help)
   cleanJHU-states.R --version
 
@@ -19,6 +19,7 @@ Options:
   -o <path>              Path to output cleaned data to.
   --writeRejects <path>  Path to output a .csv of rejected FIPS [fips, code, reason]
   --prefill <path>       Prepend JHU case-death data using data from <path> [date, state, cases, deaths, fracpos, volume]
+  --splicedate <date>    When --prefill is specified, --splicedate changes the "prepend" date to a date within the JHU timeseries, instead of at the beginning
   --reportsPath <path>   Directory where the daily US reports live inside the JHU repo
   -h --help              Show this screen.
   --version              Show version.
@@ -29,7 +30,6 @@ ps <- cli_process_start
 pd <- cli_process_done
 
 args <- docopt(doc, version = 'cleanJHU-states 0.1')
-print(args)
 
 output_path  <- args$o
 reports_path <- args$reportsPath
@@ -97,7 +97,6 @@ d <- map2_dfr(
 startingStates <- unique(d$state)
 allowedStates <- c(state.name, "District of Columbia", "Puerto Rico")
 
-
 d <- filter(d, state %in% allowedStates) %>%
   arrange(state, date)
 
@@ -142,12 +141,27 @@ final <- shortStatesStripped
 if (!is.null(args$prefill)) {
   cli_alert_info("Performing prefill scaling")
 
+  if (!is.null(args$splicedate)) {
+    splicedate <- as.Date(args$splicedate)
+    cli_alert_info("Custom splicedate used: {args$splicedate}")
+  } else {
+    splicedate <- as.Date('1970-01-01') # Dummy value
+  }
+
   JHU <- final
   CTP <- prefill # Assuming prefill source is CTP
 
+  JHUcumulative <- group_by(JHU, state) %>%
+    arrange(date) %>%
+    mutate_at(c('cases', 'deaths'), cumsum) %>%
+    ungroup
+
   # Find first day-of-data for each state in JHU dataset
   JHUmindates <- JHU %>% group_by(state) %>%
-    summarize(date = min(date))
+    # The max(min()) is there to prevent a splicedate which was specified before
+    # the beginning of the JHU timeseries to be used - instead, min(date) will be
+    # used. Then, the case where splicedate > max(date) is handled.
+    summarize(date.splice = max(min(date), splicedate) %>% min(., max(date)))
 
   ps("Calculating per-state, per-outcome scaling factors")
   # Calculate the scaling factor neccessary for the cumulative
@@ -155,8 +169,8 @@ if (!is.null(args$prefill)) {
   # first day of intersection
   JHUscale <- JHUmindates %>%
     left_join(
-      JHU %>% select(state, date, cases, deaths),
-      by = c('state', 'date')
+      JHUcumulative %>% select(state, date, cases, deaths),
+      by = c('state', 'date.splice' = 'date')
     ) %>%
     left_join(
       CTP %>%
@@ -165,7 +179,7 @@ if (!is.null(args$prefill)) {
         # incidence -> cumulative incidence
         mutate_at(c('cases', 'deaths'), cumsum) %>%
         ungroup,
-      by     = c('state', 'date'),
+      by     = c('state', 'date.splice' = 'date'),
       suffix = c('.jhu', '.ctp')
     ) %>%
     transmute(
@@ -183,14 +197,19 @@ if (!is.null(args$prefill)) {
     )
   pd()
 
-  # Perform the scaling operation on all CTP days that are at least
-  # 1 day before the first day of intersection. Floor everything
-  # to keep it integer-valued.
+  cli_alert_info("`JHUmindates`:")
+  print(JHUmindates, n=200)
+  cli_alert_info("`JHUscale`:")
+  print(JHUscale, n=200)
+
+  # Perform the scaling operation on all CTP days that are on or before
+  # "computed" splice date for each sttate. Floor everything to keep it
+  # integer-valued.
   ps("Scaling")
   scaled_prefill <- CTP %>%
     left_join(JHUscale, by = 'state') %>%
     left_join(JHUmindates, by = 'state', suffix = c('', '.max')) %>%
-    filter(date <= date.max) %>%
+    filter(date <= date.splice) %>%
     transmute(
       date,
       state,
@@ -208,7 +227,10 @@ if (!is.null(args$prefill)) {
   prefilled <- bind_rows(
     scaled_prefill,
     shortStatesStripped %>%
-      group_by(state) %>% filter(date != min(date)) %>% ungroup
+      group_by(state) %>%
+      filter(
+        date > max(min(date), splicedate) %>% min(., max(date))
+      ) %>% ungroup
   ) %>%
     arrange(state, date)
 
