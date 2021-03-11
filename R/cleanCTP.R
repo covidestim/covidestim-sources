@@ -9,13 +9,14 @@ library(cli,       warn.conflicts = FALSE)
 'CTP Cleaner
 
 Usage:
-  cleanCTP.R -o <path> [--graphs <path>] <path>
+  cleanCTP.R -o <path> [--graphs <path>] [--maxdate <date>] <path>
   cleanCTP.R (-h | --help)
   cleanCTP.R --version
 
 Options:
   -o <path>             Path to output cleaned data to.
   --graphs <path>       File to save .pdf of data-related figures to
+  --maxdate <date>      Clip data to <date>, inclusive
   -h --help             Show this screen.
   --version             Show version.
 
@@ -264,6 +265,11 @@ c(
 # The final CTP data frame             
 final.df <- CTP_cleaned[, names(final_vars)]
 colnames(final.df) <- final_vars
+
+if (!is.null(arguments$maxdate)) {
+  cli_alert_info("Clipping date to <= {arguments$maxdate}")
+  final.df <- filter(final.df, date <= as.Date(arguments$maxdate))
+}
 
 write_csv(final.df, output_path)
 cli_alert_success("Wrote cleaned data to {.file {output_path}}")
