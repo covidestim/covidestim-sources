@@ -69,8 +69,24 @@ rejects <- tibble(
 )
 pd()
 
+ps("Removing territories")
+startingFIPS <- unique(shortFIPSStripped$fips)
+territoriesStripped <- filter(
+  shortFIPSStripped,
+  !str_detect(fips, '^69'), # Northern Mariana Islands
+  !str_detect(fips, '^72'), # Puerto Rico
+  !str_detect(fips, '^78')  # Virgin Islands
+)
+endingFIPS <- unique(territoriesStripped$fips)
+rejects <- bind_rows(rejects, tibble(
+  fips   = setdiff(startingFIPS, endingFIPS),
+  code   = 'EXCLUDE_LIST',
+  reason = "On the list of excluded counties"
+))
+pd()
+
 ps("Writing cleaned data to {.file {output_path}}")
-write_csv(shortFIPSStripped, output_path)
+write_csv(territoriesStripped, output_path)
 pd()
 
 if (!identical(args$writeRejects, FALSE)) {
