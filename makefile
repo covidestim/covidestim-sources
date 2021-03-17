@@ -58,6 +58,7 @@ $(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv: R/cleanJHU-states.R \
 	@mkdir -p data-products/
 	Rscript $< -o $(dp)/jhu-states.csv \
 	  --prefill $(ds)/CTP-backfill-archive.csv \
+	  --splicedate splicedates.csv \
 	  --writeRejects $(dp)/jhu-states-rejects.csv \
 	  --reportsPath  $(jhu_reports)
 
