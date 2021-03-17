@@ -11,18 +11,18 @@ library(purrr,     warn.conflicts = FALSE)
 'JHU State-data Cleaner
 
 Usage:
-  cleanJHU-states.R -o <path> [--writeRejects <path>] [--prefill <path>] [--splicedate <date>] --reportsPath <path>
+  cleanJHU-states.R -o <path> [--writeRejects <path>] [--prefill <path>] [--splicedate <date/path>] --reportsPath <path>
   cleanJHU-states.R (-h | --help)
   cleanJHU-states.R --version
 
 Options:
-  -o <path>              Path to output cleaned data to.
-  --writeRejects <path>  Path to output a .csv of rejected FIPS [fips, code, reason]
-  --prefill <path>       Prepend JHU case-death data using data from <path> [date, state, cases, deaths, fracpos, volume]
-  --splicedate <date>    When --prefill is specified, --splicedate changes the "prepend" date to a date within the JHU timeseries, instead of at the beginning
-  --reportsPath <path>   Directory where the daily US reports live inside the JHU repo
-  -h --help              Show this screen.
-  --version              Show version.
+  -o <path>                 Path to output cleaned data to.
+  --writeRejects <path>     Path to output a .csv of rejected FIPS [fips, code, reason]
+  --prefill <path>          Prepend JHU case-death data using data from <path> [date, state, cases, deaths, fracpos, volume]
+  --splicedate <date/path>  When --prefill is specified, --splicedate changes the "prepend" date to a date within the JHU timeseries, instead of at the beginning. If a <path> is passed w/ columns [state,date], those dates are used as splicedates instead. If no splicedate is specified for a state, the first day of JHU data will be used as the date. WARNING: the case where date > max(date) is not handled, so you must ensure that your splice dates are realistic.
+  --reportsPath <path>      Directory where the daily US reports live inside the JHU repo
+  -h --help                 Show this screen.
+  --version                 Show version.
 
 ' -> doc
 
@@ -139,13 +139,22 @@ final <- shortStatesStripped
 
 # Handle the --prefill flag
 if (!is.null(args$prefill)) {
-  cli_alert_info("Performing prefill scaling")
+  customSpliceDateFilePresent <- FALSE
+  splicedate <- as.Date('1970-01-01') # Dummy value
 
-  if (!is.null(args$splicedate)) {
+  if (!is.null(args$splicedate) && !file.exists(args$splicedate)) {
     splicedate <- as.Date(args$splicedate)
     cli_alert_info("Custom splicedate used: {args$splicedate}")
-  } else {
-    splicedate <- as.Date('1970-01-01') # Dummy value
+  } else if (!is.null(args$splicedate) && file.exists(args$splicedate)) {
+    customSpliceDateFilePresent <- TRUE
+    customSpliceDates <- read_csv(
+      args$splicedate,
+      col_types = cols_only(
+        state = col_character(),
+        date = col_date(format="")
+      )
+    )
+    cli_alert_info("Custom splicedate file used: {.file {args$splicedate}}")
   }
 
   JHU <- final
@@ -157,17 +166,32 @@ if (!is.null(args$prefill)) {
     ungroup
 
   # Find first day-of-data for each state in JHU dataset
-  JHUmindates <- JHU %>% group_by(state) %>%
+  JHUsplicedates <- JHU %>% group_by(state) %>%
     # The max(min()) is there to prevent a splicedate which was specified before
     # the beginning of the JHU timeseries to be used - instead, min(date) will be
     # used. Then, the case where splicedate > max(date) is handled.
     summarize(date.splice = max(min(date), splicedate) %>% min(., max(date)))
 
+  if (customSpliceDateFilePresent) {
+    # Process the custom file by joining it to the already-computed splicedates.
+    # These dates will all be equal to min(date). Then, take the max(), to
+    # protect against the case where a splicedate specified in the file is 
+    # actually earlier than the first day of JHU data
+    amendedJHUsplicedates <-
+      left_join(JHUsplicedates, customSpliceDates, by = 'state') %>%
+      transmute(
+        state,
+        date.splice = pmax(date.splice, date, na.rm = TRUE)
+      )
+
+    JHUsplicedates <<- amendedJHUsplicedates
+  }
+
   ps("Calculating per-state, per-outcome scaling factors")
   # Calculate the scaling factor neccessary for the cumulative
   # cases/deaths of CTP data to match JHU's ccases/cdeaths on the
   # first day of intersection
-  JHUscale <- JHUmindates %>%
+  JHUscale <- JHUsplicedates %>%
     left_join(
       JHUcumulative %>% select(state, date, cases, deaths),
       by = c('state', 'date.splice' = 'date')
@@ -197,18 +221,18 @@ if (!is.null(args$prefill)) {
     )
   pd()
 
-  cli_alert_info("`JHUmindates`:")
-  print(JHUmindates, n=200)
+  cli_alert_info("`JHUsplicedates`:")
+  print(JHUsplicedates, n=200)
   cli_alert_info("`JHUscale`:")
   print(JHUscale, n=200)
 
   # Perform the scaling operation on all CTP days that are on or before
-  # "computed" splice date for each sttate. Floor everything to keep it
+  # "computed" splice date for each state. Floor everything to keep it
   # integer-valued.
   ps("Scaling")
   scaled_prefill <- CTP %>%
     left_join(JHUscale, by = 'state') %>%
-    left_join(JHUmindates, by = 'state', suffix = c('', '.max')) %>%
+    left_join(JHUsplicedates, by = 'state', suffix = c('', '.max')) %>%
     filter(date <= date.splice) %>%
     transmute(
       date,
@@ -226,11 +250,11 @@ if (!is.null(args$prefill)) {
   # data
   prefilled <- bind_rows(
     scaled_prefill,
-    shortStatesStripped %>%
+    JHU %>% left_join(JHUsplicedates, by = 'state') %>%
       group_by(state) %>%
-      filter(
-        date > max(min(date), splicedate) %>% min(., max(date))
-      ) %>% ungroup
+      filter(date > date.splice) %>%
+      ungroup %>%
+      select(-date.splice)
   ) %>%
     arrange(state, date)
 
