@@ -45,9 +45,11 @@ $(dp)/covidtracking-smoothed-clipped-%.csv: R/cleanCTP.R
 # This recipe produces cleaned county-level data from the JHU repo
 $(dp)/jhu-counties.csv $(dp)/jhu-counties-rejects.csv: R/cleanJHU-counties.R \
   $(jhu_data)/time_series_covid19_confirmed_US.csv \
-  $(jhu_data)/time_series_covid19_deaths_US.csv
+  $(jhu_data)/time_series_covid19_deaths_US.csv \
+  data-sources/fipspop.csv
 	@mkdir -p data-products/
 	Rscript $< -o $(dp)/jhu-counties.csv \
+	  --pop data-sources/fipspop.csv \
 	  --writeRejects $(dp)/jhu-counties-rejects.csv \
 	  --cases  $(jhu_data)/time_series_covid19_confirmed_US.csv \
 	  --deaths $(jhu_data)/time_series_covid19_deaths_US.csv
