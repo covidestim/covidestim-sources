@@ -89,3 +89,46 @@ $(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-
 	  --metadata $(dp)/jhu-states-metadata.json \
 	  --vax $(dp)/vaccines-counties.csv \
 	  --jhu $(dp)/jhu-states.csv
+
+$(dp)/hhs-hospitalizations-by-facility.csv: R/cleanHHS-facility.R \
+	$(ds)/ZipHsaHrr18.csv \
+	$(ds)/hhs-hospitalizations-by-week.csv
+	Rscript $< -o $@ \
+	  --crosswalk $(ds)/ZipHsaHrr18.csv \
+	  --hhs $(ds)/hhs-hospitalizations-by-week.csv
+
+# Hospitalizations by county: aggregates hospitalizations by facility into
+# counties using "fips-hsa-mapping.csv"
+$(dp)/hhs-hospitalizations-by-county.csv: R/cleanHHS-county.R \
+	$(dp)/hhs-hospitalizations-by-facility.csv \
+	$(ds)/fips-hsa-mapping.csv
+	Rscript $< -o $@ \
+	  --cleanedhhs $(dp)/hhs-hospitalizations-by-facility.csv \
+	  --mapping $(ds)/fips-hsa-mapping.csv
+
+# Using data from DHHS's API, cleans the data, which is at the facility level,
+# and annotates each faility with a HSA, using the zip code. Also, computes
+# .min and .max columns to compensate for censoring done when there are 1-3
+# hospitalizations in a given week
+$(dp)/hhs-hospitalizations-by-facility.csv: R/cleanHHS-facility.R \
+	$(ds)/ZipHsaHrr18.csv \
+	$(ds)/hhs-hospitalizations-by-week.csv
+	Rscript $< -o $@ \
+	  --crosswalk $(ds)/ZipHsaHrr18.csv \
+	  --hhs $(ds)/hhs-hospitalizations-by-week.csv
+
+# Creates the file which states, for each HSA, the proportion of the HSA
+# population that lies within any intersecting county.
+$(ds)/fips-hsa-mapping.csv: R/fips-hsa-mapping.R \
+	$(ds)/hsa-polygons/HsaBdry_AK_HI_unmodified.shp \
+	$(ds)/cbg-polygons/cb_2019_us_bg_500k.shp \
+	$(ds)/population_by_cbg.csv
+	Rscript $< -o $@ \
+	  --hsapolygons $(ds)/hsa-polygons/HsaBdry_AK_HI_unmodified.shp \
+	  --cbgpolygons $(ds)/cbg-polygons/cb_2019_us_bg_500k.shp \
+	  --cbgpop $(ds)/population_by_cbg.csv
+
+# Performs the API call to healthdata.gov to fetch latest hospitalizations
+# data.
+$(ds)/hhs-hospitalizations-by-week.csv:
+	wget -O $@ 'https://healthdata.gov/api/views/anag-cw7u/rows.csv?accessType=DOWNLOAD'

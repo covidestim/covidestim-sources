@@ -1,2 +1,3 @@
 *.swp
 data-products/*
+covidestim-sources/hhs-hospitalizations-by-week.csv
