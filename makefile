@@ -93,3 +93,29 @@ $(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv: R/cleanNYT-counti
 	Rscript $< -o $(dp)/nytimes-counties.csv \
 	  --writeRejects $(dp)/nytimes-counties-rejects.csv \
 	  $(nyt)/us-counties.csv
+
+$(dp)/hhs-hospitalizations-by-facility.csv: R/cleanHHS-facility.R \
+	$(ds)/ZipHsaHrr18.csv \
+	$(ds)/hhs-hospitalizations-by-week.csv
+	Rscript $< -o $@ \
+	  --crosswalk $(ds)/ZipHsaHrr18.csv \
+	  --hhs $(ds)/hhs-hospitalizations-by-week.csv
+
+$(dp)/hhs-hospitalizations-by-county.csv: R/cleanHHS-county.R \
+	$(dp)/hhs-hospitalizations-by-facility.csv \
+	$(ds)/fips-hsa-mapping.csv
+	Rscript $< -o $@ \
+	  --cleanedhhs $(dp)/hhs-hospitalizations-by-facility.csv \
+	  --mapping $(ds)/fips-hsa-mapping.csv
+
+$(ds)/fips-hsa-mapping.csv: R/fips-hsa-mapping.R \
+	$(ds)/hsa-polygons/HsaBdry_AK_HI_unmodified.shp \
+	$(ds)/cbg-polygons/cb_2019_us_bg_500k.shp \
+	$(ds)/population_by_cbg.csv
+	Rscript $< -o $@ \
+	  --hsapolygons $(ds)/hsa-polygons/HsaBdry_AK_HI_unmodified.shp \
+	  --cbgpolygons $(ds)/cbg-polygons/cb_2019_us_bg_500k.shp \
+	  --cbgpop $(ds)/population_by_cbg.csv
+
+$(ds)/hhs-hospitalizations-by-week.csv:
+	wget -O $@ 'https://healthdata.gov/api/views/anag-cw7u/rows.csv?accessType=DOWNLOAD'
