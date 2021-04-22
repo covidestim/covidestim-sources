@@ -9,7 +9,7 @@ library(stringr,   warn.conflicts = FALSE)
 'JHU County-data Cleaner
 
 Usage:
-  cleanJHU-counties.R -o <path> [--writeRejects <path>] --cases <path> --deaths <path>
+  cleanJHU-counties.R -o <path> --pop <path> [--writeRejects <path>] --cases <path> --deaths <path>
   cleanJHU-counties.R (-h | --help)
   cleanJHU-counties.R --version
 
@@ -18,7 +18,7 @@ Options:
   --writeRejects <path>  Path to output a .csv of rejected FIPS [fips, code, reason]
   --cases <path>        Path to the cases data 
   --deaths <path>       Path to the deaths data
-  <path>                Input .csv from the JHU GitHub
+  --pop <path>          Path to population size .csv (for excluding unk. counties)
   -h --help             Show this screen.
   --version             Show version.
 
@@ -33,6 +33,7 @@ output_path <-  args$o
 cases_path  <-  args$cases
 deaths_path <-  args$deaths
 rejects_path <- args$writeRejects
+pop_path    <-  args$pop
 
 cols(
   FIPS = col_character()
@@ -48,6 +49,10 @@ pd()
 
 ps("Loading JHU deaths data from {.file {deaths_path}}")
 deaths <- read_csv(deaths_path, col_types = col_types.jhuDeaths)
+pd()
+
+ps("Loading population size data from {.file {pop_path}}")
+popsize <- read_csv(pop_path, col_types = 'cn')
 pd()
 
 date_regex <- '\\d+/\\d+/\\d{2}'
@@ -149,8 +154,24 @@ rejects <- bind_rows(
 )
 pd()
 
+ps("Removing counties for which we lack population size data")
+startingFIPS <- unique(shortCountiesStripped$fips)
+
+unknownCountiesStripped <- filter(shortCountiesStripped, fips %in% unique(popsize$fips))
+
+endingFIPS <- unique(unknownCountiesStripped$fips)
+rejects <- bind_rows(
+  rejects,
+  tibble(
+    fips = setdiff(startingFIPS, endingFIPS),
+    code = 'NOPOP',
+    reason = "No population size information"
+  )
+)
+pd()
+
 ps("Writing cleaned data to {.file {output_path}}")
-write_csv(shortCountiesStripped, output_path)
+write_csv(unknownCountiesStripped, output_path)
 pd()
 
 if (!identical(args$writeRejects, FALSE)) {
