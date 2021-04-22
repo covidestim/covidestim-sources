@@ -1,94 +1,69 @@
-![Example output](example_output.png)
+# covidestim-sources
 
-This is a collection of data and scripts for continual analysis of revisions to
-public data which tracks the number of cases, deaths, and positive/negative
-tests from SARS-CoV-2 in the US. It includes a `git submodule` based scheme to
-keep this repository in sync with various public data sources (currently, the
-NYTimes, the Covid Tracking Project, and the NYC DPH), a `makefile` to extract
-from these repositories a comprehensive history of all versions of the datasets
-of interest, and to clean the most current versions of this data for use with
-`covidestim`, and an analysis script to analyze and visualize revisioning
-present in some of these data sources. Currently, these scripts include full or
-partial support for the following data sources, but others may be added:
+This repository provides a way to easily clean various input data used for 
+the `covidestim` model, including cases, deaths, and testing volume data.
+
+Some data sources are tracked as git submodules, and other sources, being 
+accessed through APIs, are not tracked, but rather fetched over HTTP.
+
+The included `makefile` provides a common interface for directing the fetching
+and cleaning of data sources.
+
+The following sources are currently supported
 
 - [CSSEGISandData/COVID-19](https://github.com/CSSEGISandData/COVID-19)  
-  JHU's county-level case and death data
-  - [x] cleaning for `covidestim` runs
-  - [ ] analysis
-  - [ ] graphs
-- [nytimes/covid-19-data](https://github.com/marcusrussi/reporting-delay-data)
-  NYTimes' county-level case and death data
-  - [x] cleaning
-  - [x] analysis
-  - [x] graphs
-- [COVID19Tracking/covid-tracking-data](https://github.com/COVID19Tracking/covid-tracking-data)
-  The COVID Tracking Project's daily-aggregated state-level data
-  - [x] cleaning
-  - [ ] analysis (WIP)
-  - [ ] graphs (WIP)
-  - [x] cleaning for `covidestim` runs
-- [nychealth/coronavirus-data](https://github.com/nychealth/coronavirus-data)
-  - [x] cleaning
-  - [x] analysis (WIP)
-  - [x] graphs (WIP)
+  JHU CSSE's state- and county-level COVID data
+  - [x] county level case/deaths
+  - [x] state level case/deaths/fraction positive
+  - [x] backfilling of early-epidemic state case/death data using archived [Covid Tracking Project](https://covidtracking.com/) data
+
+- [nytimes/covid-19-data](https://github.com/nytimes/covid-19-data)
+  NYTimes' covid data repository
+  - [x] county level case/deaths
+
+## Targets
+
+- `make data-products/jhu-counties.csv`: Clean JHU county-level case/death
+  data. Also writes a file `jhu-counties-rejects.csv` for counties which were
+  eliminated during the cleaning process
+
+- `make data-products/jhu-states.csv`: Clean JHU state-level data, splicing in
+  archived Covid Tracking Project data. For details on this, see the
+  `makefile`. Also writes `jhu-states-rejects.csv`
+
+- `make data-products/nyt-counties.csv`: Clean NYT county-level case/death
+  data. Writes `nyt-counties-rejects.csv`.
+
+There are a few other targets, which are generally not used as final outputs
+of the cleaning process.
 
 ## Usage
 
-GNU Parallel is required. Install GNU Parallel
-[here](https://www.gnu.org/software/parallel/). Then, to initialize the Git
-submodules:
+Initialize the Git submodules:
 
 ```bash
-git clone https://github.com/marcusrussi/reporting-delay-data && cd reporting-delay-data
+git clone https://github.com/covidestim/covidestim-sources && cd covidestim-sources
 git submodule init
 git submodule update
-make -B data # Generates the history files into data-products/
+make [targets...]
 ```
-
-An accompanying R script, `R/revision_analysis.R` provides utilities to analyze
-and vizualize the history of this data. Currently, it is configued for
-analyzing the NYTimes data, but future modifications will be made to support a
-broader array of data sources.
-
-Note that the column added by the history-processing script, `date_committed`,
-is a UNIX timestamp, not a regular date.  In R, UNIX timestamps can be easily
-parsed by using the `anytime` package.
 
 ## Staying current
 
-In order to regenerate files in `data-products` as source data changes, invoke
-`make` as follows, every day or so:
+You will need to periodically run
 
 ```bash
-make -B data
+git submodule update
 ```
 
-## Example
+in order to keep your submodules up-to-date. Otherwise, data sources which are
+git submodules will never change!
 
-```r
-source("R/sketch.R")
-
-plot_discrepancy(incidence, state_="New York") # Plot of cases&deaths for NYS
-plot_deltas(deltas_prevalence) # Plot of revisioning actions for entire US
-```
-
-# Data cleaning
-
-This repository is also used to clean data used for running `covidestim` on all
-US states daily. Right now, the only data source used for these runs is the
-Covid Tracking Project. However, test-positivity data from the Covid Tracking
-Project is subject to the same errata and inconsistencies as the municipalities
-they source the data frame, and so we apply a modified version of a moving
-average to their test-positivity data in order to produce input to the model
-that makes sense. The details of this can be found in `R/cleanCTP.R`.
-
-In order to replicate Covid Tracking Project data that was used for a
-`covidestim` run, run the following commands:
+We recommend using `make -B` to force targets to be remade, like so:
 
 ```bash
-git checkout [hash] # The hash of the commit referenced in the covidestim report
-make -B data
+make -B data-products/jhu-counties.csv
 ```
 
-You will find, in data-products, the file `covidtracking-smoothed.csv`, which
-is the exact input used for the run.
+This is especially useful for targets which depend on the results of HTTP
+requests.
