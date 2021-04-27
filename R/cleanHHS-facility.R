@@ -146,9 +146,11 @@ PLL <- function(par, spline_mat, DATA){
 #week to day function
 weekToDay <- function(v){
   nweeks <- length(v)
+  v[v == -999999] <- 2
+  n_spl <- 10
   # use a natural cubic spline to constrain second derivative at the margins to be 0
   spline_mat <- as.matrix(as.data.frame(splines::ns(1:(nweeks*7),  
-                                                    df = 10,
+                                                    df = n_spl,
                                                     intercept = TRUE)))
   nruns <- 10
   inits <- optims <- vector("list", nruns)
@@ -157,7 +159,7 @@ weekToDay <- function(v){
   
   #optimize over the Poisson likelihood function
   for(i in 1:nruns){
-    inits[[i]] <- rnorm(10)
+    inits[[i]] <- rnorm(n_spl)
     optims[[i]] <- optim(inits[[i]], PLL, 
                          DATA = v, spline_mat = spline_mat, 
                          method = "BFGS", control = list(maxit = 1000))
