@@ -131,22 +131,56 @@ pd()
 # appropriate, because moving from week=>day will increase the number of rows
 # in the `tibble` which doesn't work when using dplyr::mutate
 
-# Dummy functions
-weekToDay <- function(v) {
-  # 'v' is a numeric vector containing admissions data, by week.
+# Quick function to compute the week total of daily observations
+weeksum <- function(x) unname(tapply(x, (seq_along(x)-1)%/%7, sum)) 
 
-  # For now, return v unmodified
-  v
+# Poisson likelihood + spline function
+PLL <- function(par, spline_mat, DATA){
+  pred_hosp_d <- exp(as.numeric(spline_mat%*%par)) # predicted daily hospitalizations
+  pred_hosp_w <- weeksum(pred_hosp_d) # weeksums
+  DATA[is.na(DATA)] <- round(pred_hosp_w[is.na(DATA)]) # impute NA values with modelled weeksums
+  LL <- -sum(dpois(DATA, pred_hosp_w, log = TRUE)) # evaluate likelihood
+  return(LL)
 }
 
+#week to day function
+weekToDay <- function(v){
+  nweeks <- length(v)
+  # use a natural cubic spline to constrain second derivative at the margins to be 0
+  spline_mat <- as.matrix(as.data.frame(splines::ns(1:(nweeks*7),  
+                                                    df = 10,
+                                                    intercept = TRUE)))
+  nruns <- 10
+  inits <- optims <- vector("list", nruns)
+  vals <- vector(length = nruns)
+  set.seed(123)
+  
+  #optimize over the Poisson likelihood function
+  for(i in 1:nruns){
+    inits[[i]] <- rnorm(10)
+    optims[[i]] <- optim(inits[[i]], PLL, 
+                         DATA = v, spline_mat = spline_mat, 
+                         method = "BFGS", control = list(maxit = 1000))
+    vals[i] <- opts[[i]]$value
+  }
+  # use the parameters from the maximum optimization run
+  res <- exp(as.numeric(design_mat%*%opts[[which(vals == max(vals))]]$par))
+  res <- as.data.frame(cbind(v, matrix(res, nrow = nweeks, byrow = TRUE)))
+  colnames(res) <- c("sum", paste0("Day", 1:7))
+  return(res)
+}
+
+# Create new data
 byday <- group_by(joined, hospital_pk) %>%
+  arrange(weekstart) %>%
   mutate_at(vars(starts_with("admissions")), ~weekToDay(.))
 
 ##############################################################################
 ##                     END OF WEEK => DAY CONVERSION                        ##
 ##############################################################################
 
-out <- byday
+# force new columns into the data.frame
+out <- do.call(data.frame(byday))
 
 ps("Writing joined admissions data to {.file {output_path}}")
 write_csv(out, output_path)
