@@ -146,7 +146,7 @@ PLL <- function(par, spline_mat, DATA){
 #week to day function
 weekToDay <- function(v){
   nweeks <- length(v)
-  v[v == -999999] <- 2
+  v[v == -999999] <- 2 # replace censored values with 2 
   n_spl <- 10
   # use a natural cubic spline to constrain second derivative at the margins to be 0
   spline_mat <- as.matrix(as.data.frame(splines::ns(1:(nweeks*7),  
@@ -166,7 +166,7 @@ weekToDay <- function(v){
     vals[i] <- opts[[i]]$value
   }
   # use the parameters from the maximum optimization run
-  res <- exp(as.numeric(design_mat%*%opts[[which(vals == max(vals))]]$par))
+  res <- exp(as.numeric(design_mat%*%opts[[which(vals == max(vals))[1]]]$par))
   res <- as.data.frame(cbind(v, matrix(res, nrow = nweeks, byrow = TRUE)))
   colnames(res) <- c("sum", paste0("Day", 1:7))
   return(res)
