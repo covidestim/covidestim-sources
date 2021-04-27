@@ -29,7 +29,7 @@ args   <- docopt(doc, version = 'cleanHHS.R 0.1')
 # args <- list(
 #   o = 'DELTEEME',
 #   crosswalk = "../data-sources/ZipHsaHrr18.csv",
-#   hhs = "../hhs_tmp.csv"
+#   hhs = "../data-sources/hhs-hospitalizations-by-week.csv"
 # )
 
 output_path    <- args$o
@@ -145,13 +145,18 @@ PLL <- function(par, spline_mat, DATA){
 
 #week to day function
 weekToDay <- function(v){
+
   nweeks <- length(v)
   v[v == -999999] <- 2 # replace censored values with 2 
   n_spl <- 10
+
   # use a natural cubic spline to constrain second derivative at the margins to be 0
-  spline_mat <- as.matrix(as.data.frame(splines::ns(1:(nweeks*7),  
-                                                    df = n_spl,
-                                                    intercept = TRUE)))
+  spline_mat <- as.matrix(
+    as.data.frame(
+      splines::ns(1:(nweeks*7), df = n_spl, intercept = TRUE)
+    )
+  )
+
   nruns <- 10
   inits <- optims <- vector("list", nruns)
   vals <- vector(length = nruns)
@@ -160,29 +165,63 @@ weekToDay <- function(v){
   #optimize over the Poisson likelihood function
   for(i in 1:nruns){
     inits[[i]] <- rnorm(n_spl)
-    optims[[i]] <- optim(inits[[i]], PLL, 
-                         DATA = v, spline_mat = spline_mat, 
-                         method = "BFGS", control = list(maxit = 1000))
-    vals[i] <- opts[[i]]$value
+
+    optims[[i]] <- optim(
+      inits[[i]],
+      PLL,
+      DATA = v, spline_mat = spline_mat, 
+      method = "BFGS",
+      control = list(maxit = 1000)
+    )
+
+    vals[i] <- optims[[i]]$value
   }
+
   # use the parameters from the maximum optimization run
-  res <- exp(as.numeric(design_mat%*%opts[[which(vals == max(vals))[1]]]$par))
-  res <- as.data.frame(cbind(v, matrix(res, nrow = nweeks, byrow = TRUE)))
-  colnames(res) <- c("sum", paste0("Day", 1:7))
+  res <- exp(
+    as.numeric(
+      spline_mat %*% optims[[which(vals == max(vals))[1]]]$par
+    )
+  )
+
   return(res)
+
+  # res <- as.data.frame(cbind(v, matrix(res, nrow = nweeks, byrow = TRUE)))
+  # colnames(res) <- c("sum", paste0("Day", 1:7))
+  # return(res)
+}
+
+CLIWeekToDay <- function(...) {
+  start <- Sys.time()
+  result <- weekToDay(...)
+
+  dt <- as.numeric(Sys.time() - start)
+  cli_alert_info("Finished in {prettyunits::pretty_sec(dt)}")
+
+  result
 }
 
 # Create new data
 byday <- group_by(joined, hospital_pk) %>%
   arrange(weekstart) %>%
-  mutate_at(vars(starts_with("admissions")), ~weekToDay(.))
+  summarize(
+    zip = first(zip),
+    date = seq.Date(
+      min(weekstart),
+      max(weekstart) + lubridate::days(6),
+      by = '1 day'
+    ),
+    admissionsAdultsSuspected = CLIWeekToDay(admissionsAdultsSuspected),
+    admissionsAdultsConfirmed = CLIWeekToDay(admissionsAdultsConfirmed),
+    hsanum = first(hsanum)
+  )
 
 ##############################################################################
 ##                     END OF WEEK => DAY CONVERSION                        ##
 ##############################################################################
 
 # force new columns into the data.frame
-out <- do.call(data.frame(byday))
+out <- byday
 
 ps("Writing joined admissions data to {.file {output_path}}")
 write_csv(out, output_path)
