@@ -191,9 +191,50 @@ weekToDay <- function(v){
   # return(res)
 }
 
+# Function that detects missing weeks in weekstart between min(weekstart) and max(weekstart)
+# the observations V are appended with NA for the missing weeks 
+fullweek <- function(v, weekstart){
+  
+  full_weeks <- seq.Date(min(weekstart), max(weekstart), by = 7)
+  
+  vComplete <- rep(NA, length(full_weeks))
+  vComplete[which(full_weeks %in% weekstart)] <- v
+  
+  return(vComplete)
+  
+}
+
+# function to disaggregate weekly to daily data
+# censored data are replaced with a default value of 2
+# NA values are imputed using a natural spline interpolation
+# daily values are created using the denton cholette method
+# which minimized the sum of second order differences
+# from the weekly observations 
+
+week_to_day <- function(v, weekstart){
+  
+  v <- fullweek(v, weekstart)
+  v[which(v==-999999)] <- 2 
+  v <- ts(v, start = 1)
+  
+  # imputa NA values
+  v <- imputeTS::na_interpolation(v, option = "spline", 
+                                  method =  "natural")
+  v[which(v < 0 )] <- 0 # force negative values to be 0
+  
+  # create daily values
+  v <- predict(tempdisagg::td(v~1, conversion = "sum", to = 7, 
+                                method = "denton-cholette", h = 2))
+  v[which(v < 0)] <- 0 # force negative values to be 0
+  
+  return(v)
+}
+
+
+
 CLIWeekToDay <- function(...) {
   start <- Sys.time()
-  result <- weekToDay(...)
+  result <- week_to_day(...)
 
   dt <- as.numeric(Sys.time() - start)
   cli_alert_info("Finished in {prettyunits::pretty_sec(dt)}")
@@ -211,8 +252,10 @@ byday <- group_by(joined, hospital_pk) %>%
       max(weekstart) + lubridate::days(6),
       by = '1 day'
     ),
-    admissionsAdultsSuspected = CLIWeekToDay(admissionsAdultsSuspected),
-    admissionsAdultsConfirmed = CLIWeekToDay(admissionsAdultsConfirmed),
+    admissionsAdultsSuspected = CLIWeekToDay(admissionsAdultsSuspected, weekstart),
+    admissionsAdultsConfirmed = CLIWeekToDay(admissionsAdultsConfirmed, weekstart),
+    admissionsPedsSuspected = CLIweek(admissionsPedsSuspected, weekstart),
+    admissionsPedsConfirmed = CLIweek(admissionsPedsConfirmed, weekstart),
     hsanum = first(hsanum)
   )
 
