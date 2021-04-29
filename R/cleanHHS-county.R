@@ -26,23 +26,28 @@ args <- docopt(doc, version = 'cleanHHS-county.R 0.1')
 
 # Fake args for debugging/development
 # args <- list(
+#   o = "test.csv",
 #   cleanedhhs = "../data-products/hhs-hospitalizations-by-facility.csv", 
-#   hsapolygons = "../data-sources/hsa-shapefile/HsaBdry_AK_HI_unmodified.shp", 
-#   cbgpolygons = "../data-sources/cb_2019_us_bg_500k/cb_2019_us_bg_500k.shp", 
-#   cbgpop = "../data-sources/population_by_cbg.csv",
+#   mapping = "../data-sources/fips-hsa-mapping.csv"
 # )
 
 output_path <-  args$o
 
-cols(
+cols_only(
   hospital_pk = col_character(),
-  hospital_name = col_character(),
   zip = col_character(),
-  weekstart = col_date(format = ""),
+  date = col_date(format = ""),
   admissionsAdultsConfirmed = col_double(),
   admissionsAdultsSuspected = col_double(),
-  # admissionsPedsConfirmed = col_double(),
-  # admissionsPedsSuspected = col_double(),
+  admissionsPedsConfirmed = col_double(),
+  admissionsPedsSuspected = col_double(),
+
+  # These are columns generated in `cleanHHS-facility.R` which assume that
+  # censored values resolve to either the minimum or maximum of their range
+  # (the range being 1-3 admissions in a week). We won't process these here
+  # because it's only the above four variables which are imputed. In fact, the
+  # commented variables below may not even exist!
+
   # admissionsAdultsConfirmed.min = col_double(),
   # admissionsAdultsConfirmed.max = col_double(),
   # admissionsAdultsSuspected.min = col_double(),
@@ -51,6 +56,7 @@ cols(
   # admissionsPedsConfirmed.max = col_double(),
   # admissionsPedsSuspected.min = col_double(),
   # admissionsPedsSuspected.max = col_double(),
+
   hsanum = col_double()
 ) -> cleanedhhsSpec
 
@@ -62,20 +68,22 @@ ps("Reading FIPS-HSA mapping file {.file {args$mapping}}")
 fipsMapping <- read_csv(args$mapping, col_types = 'cnn')
 pd()
 
-censoredSum <- function(v) ifelse(-999999 %in% v, -999999, sum(v))
-
 ps("Computing admissions by HSA")
-admissionsByHHS <- cleanedhhs %>% group_by(hsanum, weekstart) %>%
-  summarize(across(starts_with("admissions"), censoredSum)) %>%
-  ungroup
+admissionsByHHS <- cleanedhhs %>% group_by(hsanum, date) %>%
+  summarize(across(starts_with("admissions"), sum), .groups = "drop")
 pd()
 
-ps("Computing per-county admissions using FIPS=>HSA mappings")
+ps("Computing per-county admissions using FIPS => HSA mappings")
 admissionsByFIPS <- fipsMapping %>%
-  left_join(admissionsByHHS, by = c("hsa" = "hsanum")) %>%
-  group_by(fips, weekstart) %>%
-  summarize(across(starts_with("admissions"), censoredSum)) %>%
-  ungroup
+  inner_join(admissionsByHHS, by = c("hsa" = "hsanum")) %>%
+  group_by(fips, date) %>%
+  summarize(
+    admissionsAdultsSuspected = sum(admissionsAdultsSuspected * proportion),
+    admissionsAdultsConfirmed = sum(admissionsAdultsConfirmed * proportion),
+    admissionsPedsSuspected   = sum(admissionsPedsSuspected * proportion),
+    admissionsPedsConfirmed   = sum(admissionsPedsConfirmed * proportion),
+    .groups = "drop"
+  )
 pd()
 
 out <- admissionsByFIPS

@@ -2,6 +2,9 @@
 suppressPackageStartupMessages( library(tidyverse) )
 library(docopt, warn.conflicts = FALSE)
 library(cli,    warn.conflicts = FALSE)
+
+require(imputeTS)
+require(tempdisagg)
                     
 'HHS Hospitalizations-data Cleaner
 
@@ -54,6 +57,8 @@ hhsSpec <- cols(
   geocoded_hospital_address = col_character()
 )
 
+cli_h1("Loading input data")
+
 ps("Reading crosswalk file {.file {crosswalk_path}}")
 crosswalk <- read_csv(
   crosswalk_path,
@@ -81,7 +86,9 @@ cleanAdmissions <- function(v) case_when(
 admissionsMin <- function(v) ifelse(v == -999999, 1, v)
 admissionsMax <- function(v) ifelse(v == -999999, 3, v)
 
-ps("Cleaning admissions data")
+cli_h1("Data cleaning")
+
+ps("Row-level cleaning of admissions data")
 cleaned <- transmute(
   hhs,
   hospital_pk, hospital_name, # Facility uid and name
@@ -114,13 +121,65 @@ cleaned <- transmute(
   )
 pd()
 
+ps("Identifying implicitly missing weeks for each facility")
+# Sometimes, a facility has a missing week (implicitly missing - it's just
+# not in the data). To get around this, `allWeeksEachFacilityShouldHave`
+# contains a row for each week every facility "should" have. This operates
+# on the assumption that a perfect dataset would have a report from every
+# facility for each week between the first week reported and the last week
+# reported.
+allWeeksEachFacilityShouldHave <- cleaned %>%
+  group_by(hospital_pk, zip) %>%
+  summarize(
+    weekstart = seq.Date(
+      min(weekstart), max(weekstart), by = '1 week'
+    ),
+    .groups = 'drop'
+  )
+
+# When you left-join `allWeeksEachFacilityShouldHave` to the cleaned tibble,
+# you make the missingness explicit because there will be NA-valued admissions
+# introduced when there is no corresponding record for a particular week for
+# a particular facility.
+withImplicitlyMissingWeeks <- left_join(
+  allWeeksEachFacilityShouldHave,
+  cleaned,
+  by = c("hospital_pk", "zip", "weekstart")
+)
+pd()
+nImplicitlyMissing <- nrow(withImplicitlyMissingWeeks) - nrow(cleaned)
+cli_alert_warning("{nImplicitlyMissing} implicity missing weeks are now tagged with {.code NA}")
+
+ps("Selecting facilities with >=2 observations")
+# A facility can only used if all of its admissions variables have at least
+# two weeks where there are non-NA values. Otherwise a spline cannot
+# be constructed.
+onlyFacilitiesWithAtLeastTwoObservations <- withImplicitlyMissingWeeks %>%
+  group_by(hospital_pk) %>%
+  filter(
+    if_all(
+      starts_with("admissions"), # All admissions varialbes
+      ~sum(is.na(.)) < n() - 1   # At least two non-missing observations
+    )
+  )
+pd()
+
+nWithTooMuchMissingness <-
+  length(unique(withImplicitlyMissingWeeks$hospital_pk)) -
+    length(unique(onlyFacilitiesWithAtLeastTwoObservations$hospital_pk))
+cli_alert_warning("{nWithTooMuchMissingness} facilities removed for having too much missingness")
+
 # Because this uses an inner join rather than a left join, this operation
 # will remove:
 #
 # - Everything in Puerto Rico and other US territories (because the crosswalk file lacks them)
 # - Seemingly, some random zip code in Arkansas (might be an invalid zip code)
 ps("Joining admissions data to HSAs")
-joined <- inner_join(cleaned, select(crosswalk, zip = zipcode18, hsanum), by = 'zip')
+joined <- inner_join(
+  onlyFacilitiesWithAtLeastTwoObservations,
+  select(crosswalk, zip = zipcode18, hsanum),
+  by = 'zip'
+)
 pd()
 
 ##############################################################################
@@ -144,7 +203,7 @@ PLL <- function(par, spline_mat, DATA){
 }
 
 #week to day function
-weekToDay <- function(v){
+legacyWeekToDay <- function(v){
 
   nweeks <- length(v)
   v[v == -999999] <- 2 # replace censored values with 2 
@@ -191,19 +250,6 @@ weekToDay <- function(v){
   # return(res)
 }
 
-# Function that detects missing weeks in weekstart between min(weekstart) and max(weekstart)
-# the observations V are appended with NA for the missing weeks 
-fullweek <- function(v, weekstart){
-  
-  full_weeks <- seq.Date(min(weekstart), max(weekstart), by = 7)
-  
-  vComplete <- rep(NA, length(full_weeks))
-  vComplete[which(full_weeks %in% weekstart)] <- v
-  
-  return(vComplete)
-  
-}
-
 # function to disaggregate weekly to daily data
 # censored data are replaced with a default value of 2
 # NA values are imputed using a natural spline interpolation
@@ -211,38 +257,61 @@ fullweek <- function(v, weekstart){
 # which minimized the sum of second order differences
 # from the weekly observations 
 
-week_to_day <- function(v, weekstart){
+weekToDay <- function(v){
   
-  v <- fullweek(v, weekstart)
   v[which(v==-999999)] <- 2 
   v <- ts(v, start = 1)
   
   # imputa NA values
-  v <- imputeTS::na_interpolation(v, option = "spline", 
-                                  method =  "natural")
+  v <- imputeTS::na_interpolation(v, option = "spline", method =  "natural")
   v[which(v < 0 )] <- 0 # force negative values to be 0
   
   # create daily values
-  v <- predict(tempdisagg::td(v~1, conversion = "sum", to = 7, 
-                                method = "denton-cholette", h = 2))
+  v <- predict(
+    tempdisagg::td(
+      v ~ 1,
+      conversion = "sum", # Maintain a consistent weekly sum
+      to = 7, 
+      method = "denton-cholette",
+      h = 2
+    )
+  )
+
   v[which(v < 0)] <- 0 # force negative values to be 0
   
   return(v)
 }
 
+cli_h1("Imputing per-facility weekly admissions and moving from week=>day")
 
+nfacilities <- unique(joined$hospital_pk) %>% length
 
-CLIWeekToDay <- function(...) {
+# In reverse order because of display issues
+sb4 <- cli_status("{symbol$arrow_right} [4/4] Confirmed peds (0%) 0/{nfacilities}")
+sb3 <- cli_status("{symbol$arrow_right} [3/4] Suspected peds (0%) 0/{nfacilities}")
+sb2 <- cli_status("{symbol$arrow_right} [2/4] Confirmed adults (0%) 0/{nfacilities}")
+sb1 <- cli_status("{symbol$arrow_right} [1/4] Suspected adults (0%) 0/{nfacilities}")
+totalRuntime <- 0
+
+CLIWeekToDay <- function(..., name, sb, id) {
   start <- Sys.time()
-  result <- week_to_day(...)
+  result <- weekToDay(...)
 
   dt <- as.numeric(Sys.time() - start)
-  cli_alert_info("Finished in {prettyunits::pretty_sec(dt)}")
+  totalRuntime <<- totalRuntime + dt
+  meanRuntime <- totalRuntime / id
+  cli_status_update(id = sb, "{symbol$arrow_right} {name} ({scales::percent(id/nfacilities)}) {id}/{nfacilities}, mean time {prettyunits::pretty_sec(meanRuntime)}")
+
+  if (id == nfacilities) {
+    cli_status_clear()
+    cli_alert_success("{name} (100%)")
+    totalRuntime <<- 0
+  }
 
   result
 }
 
-# Create new data
+# Impute and convert to per-day representation
 byday <- group_by(joined, hospital_pk) %>%
   arrange(weekstart) %>%
   summarize(
@@ -252,16 +321,19 @@ byday <- group_by(joined, hospital_pk) %>%
       max(weekstart) + lubridate::days(6),
       by = '1 day'
     ),
-    admissionsAdultsSuspected = CLIWeekToDay(admissionsAdultsSuspected, weekstart),
-    admissionsAdultsConfirmed = CLIWeekToDay(admissionsAdultsConfirmed, weekstart),
-    admissionsPedsSuspected = CLIweek(admissionsPedsSuspected, weekstart),
-    admissionsPedsConfirmed = CLIweek(admissionsPedsConfirmed, weekstart),
-    hsanum = first(hsanum)
+    admissionsAdultsSuspected = CLIWeekToDay(admissionsAdultsSuspected, name="[1/4] Suspected adults", sb=sb1, id=cur_group_id()),
+    admissionsAdultsConfirmed = CLIWeekToDay(admissionsAdultsConfirmed, name="[2/4] Confirmed adults", sb=sb2, id=cur_group_id()),
+    admissionsPedsSuspected = CLIWeekToDay(admissionsPedsSuspected, sb=sb3, name="[3/4] Suspected peds", id=cur_group_id()),
+    admissionsPedsConfirmed = CLIWeekToDay(admissionsPedsConfirmed, sb=sb4, name="[4/4] Confirmed peds", id=cur_group_id()),
+    hsanum = first(hsanum),
+    .groups = "drop"
   )
 
 ##############################################################################
 ##                     END OF WEEK => DAY CONVERSION                        ##
 ##############################################################################
+
+cli_h1("Writing output data")
 
 # force new columns into the data.frame
 out <- byday
