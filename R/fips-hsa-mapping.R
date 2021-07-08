@@ -103,7 +103,7 @@ fipsMapping <- cbgsWithHSAAndPop %>%
   group_by(fips, hsa) %>%
   # We use first() here because every row has the HSA population, and we don't
   # want to pass a vector as an argument to the summary function.
-  summarize(proportion = sum(population) / first(popHSA)) %>% ungroup
+  summarize(proportion = sum(population, na.rm = T) / first(popHSA)) %>% ungroup
 pd()
 
 # Validation:
