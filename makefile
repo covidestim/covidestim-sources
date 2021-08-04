@@ -95,3 +95,14 @@ $(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv: R/cleanNYT-counti
 	Rscript $< -o $(dp)/nytimes-counties.csv \
 	  --writeRejects $(dp)/nytimes-counties-rejects.csv \
 	  $(nyt)/us-counties.csv
+
+$(dp)/vaccines-counties.csv:
+	@mkdir -p data-products/
+	Rscript -e "readr::write_csv(vaccineAdjust::run(), '$@')"
+
+$(dp)/case-death-rr.csv: R/join-JHU-vaccines.R \
+  $(dp)/vaccines-counties.csv $(dp)/jhu-counties.csv
+	@mkdir -p data-products
+	Rscript $< -o $@ \
+	  --vax $(dp)/vaccines-counties.csv \
+	  --jhu $(dp)/jhu-counties.csv
