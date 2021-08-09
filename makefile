@@ -106,3 +106,10 @@ $(dp)/case-death-rr.csv: R/join-JHU-vaccines.R \
 	Rscript $< -o $@ \
 	  --vax $(dp)/vaccines-counties.csv \
 	  --jhu $(dp)/jhu-counties.csv
+
+$(dp)/case-death-rr-state.csv: R/join-state-JHU-vaccines.R \
+  $(dp)/vaccines-counties.csv $(dp)/jhu-states.csv
+	@mkdir -p data-products
+	Rscript $< -o $@ \
+	  --vax $(dp)/vaccines-counties.csv \
+	  --jhu $(dp)/jhu-states.csv
