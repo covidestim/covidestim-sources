@@ -271,7 +271,12 @@ pd()
 
 if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {metadata_path}}")
-  jsonlite::write_json(tibble::tibble(), metadata_path)
+  metadata <- group_by(final, state) %>%
+    summarize(
+      minInputDate = min(date),
+      maxInputDate = max(date)
+    )
+  jsonlite::write_json(metadata, metadata_path, null = "null")
   pd()
 }
 

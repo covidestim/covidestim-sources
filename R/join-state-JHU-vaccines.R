@@ -113,6 +113,7 @@ pd()
 
 if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {args$writeMetadata}}")
-  jsonlite::write_json(metadata, args$writeMetadata)
+  metadata <- filter(metadata, state %in% unique(replaced$state))
+  jsonlite::write_json(metadata, args$writeMetadata, null = "null")
   pd()
 }
