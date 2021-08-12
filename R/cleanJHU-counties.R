@@ -9,18 +9,20 @@ library(stringr,   warn.conflicts = FALSE)
 'JHU County-data Cleaner
 
 Usage:
-  cleanJHU-counties.R -o <path> --pop <path> [--writeRejects <path>] --cases <path> --deaths <path>
+  cleanJHU-counties.R -o <path> --pop <path> --nonreporting <path> [--writeRejects <path>] --writeMetadata <path> --cases <path> --deaths <path>
   cleanJHU-counties.R (-h | --help)
   cleanJHU-counties.R --version
 
 Options:
-  -o <path>             Path to output cleaned data to.
-  --writeRejects <path>  Path to output a .csv of rejected FIPS [fips, code, reason]
-  --cases <path>        Path to the cases data 
-  --deaths <path>       Path to the deaths data
-  --pop <path>          Path to population size .csv (for excluding unk. counties)
-  -h --help             Show this screen.
-  --version             Show version.
+  -o <path>               Path to output cleaned data to.
+  --nonreporting <path>   A csv [fipsPattern,date(YYYY-MM-DD)] specifying which counties no longer report deaths
+  --writeRejects <path>   Path to output a .csv of rejected FIPS [fips, code, reason]
+  --writeMetadata <path>  Where to output per-county metadata .json file
+  --cases <path>          Path to the cases data 
+  --deaths <path>         Path to the deaths data
+  --pop <path>            Path to population size .csv (for excluding unk. counties)
+  -h --help               Show this screen.
+  --version               Show version.
 
 ' -> doc
 
@@ -29,11 +31,13 @@ pd <- cli_process_done
 
 args   <- docopt(doc, version = 'cleanJHU-counties 0.1')
 
-output_path <-  args$o
-cases_path  <-  args$cases
-deaths_path <-  args$deaths
-rejects_path <- args$writeRejects
-pop_path    <-  args$pop
+output_path       <- args$o
+cases_path        <- args$cases
+deaths_path       <- args$deaths
+rejects_path      <- args$writeRejects
+nonreporting_path <- args$nonreporting
+metadata_path     <- args$writeMetadata
+pop_path          <- args$pop
 
 cols(
   FIPS = col_character()
@@ -43,12 +47,21 @@ cols(
   FIPS = col_character()
 ) -> col_types.jhuDeaths
 
+cols(
+  fipsPattern = col_character(),
+  nonReportingBegins = col_date(format='%Y-%m-%d')
+) -> col_types.nonreporting
+
 ps("Loading JHU cases data from {.file {cases_path}}")
 cases <- read_csv(cases_path, col_types = col_types.jhuCases)
 pd()
 
 ps("Loading JHU deaths data from {.file {deaths_path}}")
 deaths <- read_csv(deaths_path, col_types = col_types.jhuDeaths)
+pd()
+
+ps("Loading nonreporting information from {.file {nonreporting_path}}")
+nonreporting <- read_csv(nonreporting_path, col_types = col_types.nonreporting)
 pd()
 
 ps("Loading population size data from {.file {pop_path}}")
@@ -172,6 +185,10 @@ pd()
 
 ps("Writing cleaned data to {.file {output_path}}")
 write_csv(unknownCountiesStripped, output_path)
+pd()
+
+ps("Writing metadata to {.file {metadata_path}}")
+jsonlite::write_json(tibble::tibble(), metadata_path)
 pd()
 
 if (!identical(args$writeRejects, FALSE)) {

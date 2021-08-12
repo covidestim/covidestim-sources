@@ -8,16 +8,18 @@ ps <- cli_process_start; pd <- cli_process_done
 'JHU State-data / Vaccine-data Joiner
 
 Usage:
-  join-state-JHU-vaccines.R -o <path> --jhu <path> --vax <path>
+  join-state-JHU-vaccines.R -o <path> --jhu <path> --vax <path> --metadata <path> [--writeMetadata <path>]
   join-state-JHU-vaccines.R (-h | --help)
   join-state-JHU-vaccines.R --version
 
 Options:
-  -o <path>             Path to output joined data to.
-  --jhu <path>          Path to cleaned JHU state-level data
-  --vax <path>          Path to vaccine risk-ratio data
-  -h --help             Show this screen.
-  --version             Show version.
+  -o <path>               Path to output joined data to.
+  --jhu <path>            Path to cleaned JHU state-level data
+  --vax <path>            Path to vaccine risk-ratio data
+  --metadata <path>       Path to JSON metadata about the cases/deaths of each state
+  --writeMetadata <path>  Where to save metadata about all case/death/vaccine data
+  -h --help               Show this screen.
+  --version               Show version.
 
 ' -> doc
 
@@ -49,6 +51,10 @@ vax <- read_csv(
     RR = col_number()
   )
 )
+pd()
+
+ps("Loading metadata from {.file {args$metadata}}")
+metadata <- jsonlite::read_json(args$metadata)
 pd()
 
 ps("Joining JHU and vax data")
@@ -105,3 +111,8 @@ ps("Writing output to {.file {args$o}}")
 write_csv(replaced, args$o)
 pd()
 
+if (!is.null(args$writeMetadata)) {
+  ps("Writing metadata to {.file {args$writeMetadata}}")
+  jsonlite::write_json(metadata, args$writeMetadata)
+  pd()
+}

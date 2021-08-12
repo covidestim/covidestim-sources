@@ -11,13 +11,14 @@ library(purrr,     warn.conflicts = FALSE)
 'JHU State-data Cleaner
 
 Usage:
-  cleanJHU-states.R -o <path> [--writeRejects <path>] [--prefill <path>] [--splicedate <date/path>] --reportsPath <path>
+  cleanJHU-states.R -o <path> [--writeRejects <path>] [--prefill <path>] [--splicedate <date/path>] [--writeMetadata <path>] --reportsPath <path>
   cleanJHU-states.R (-h | --help)
   cleanJHU-states.R --version
 
 Options:
   -o <path>                 Path to output cleaned data to.
   --writeRejects <path>     Path to output a .csv of rejected FIPS [fips, code, reason]
+  --writeMetadata <path>    Where to save a .json of metadata about the result of each state
   --prefill <path>          Prepend JHU case-death data using data from <path> [date, state, cases, deaths, fracpos, volume]
   --splicedate <date/path>  When --prefill is specified, --splicedate changes the "prepend" date to a date within the JHU timeseries, instead of at the beginning. If a <path> is passed w/ columns [state,date], those dates are used as splicedates instead. If no splicedate is specified for a state, the first day of JHU data will be used as the date. WARNING: the case where date > max(date) is not handled, so you must ensure that your splice dates are realistic.
   --reportsPath <path>      Directory where the daily US reports live inside the JHU repo
@@ -31,10 +32,11 @@ pd <- cli_process_done
 
 args <- docopt(doc, version = 'cleanJHU-states 0.1')
 
-output_path  <- args$o
-reports_path <- args$reportsPath
-rejects_path <- args$writeRejects
-prefill_path <- args$prefill
+output_path   <- args$o
+reports_path  <- args$reportsPath
+rejects_path  <- args$writeRejects
+prefill_path  <- args$prefill
+metadata_path <- args$writeMetadata
 
 cols_only(
   Province_State     = col_character(),
@@ -266,6 +268,12 @@ if (!is.null(args$prefill)) {
 ps("Writing cleaned data to {.file {output_path}}")
 write_csv(final, output_path)
 pd()
+
+if (!is.null(args$writeMetadata)) {
+  ps("Writing metadata to {.file {metadata_path}}")
+  jsonlite::write_json(tibble::tibble(), metadata_path)
+  pd()
+}
 
 if (!is.null(args$writeRejects)) {
   ps("Writing rejected counties to {.file {rejects_path}}")
