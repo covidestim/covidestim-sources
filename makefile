@@ -77,12 +77,12 @@ $(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv: R/cleanNYT-counti
 
 $(dp)/vaccines-counties.csv:
 	@mkdir -p data-products/
-	Rscript -e "readr::write_csv(vaccineAdjust::run(), '$@')"
+	Rscript -e "readr::write_csv(vaccineAdjust::run(), '$@')" || \
+	  gunzip < data-sources/vaccines-backup.csv.gz > $@
 
 $(dp)/case-death-rr.csv $(dp)/case-death-rr-metadata.json: R/join-JHU-vaccines.R \
   $(dp)/vaccines-counties.csv \
-  $(dp)/jhu-counties.csv \
-  $(dp)/jhu-counties-metadata.json
+  $(dp)/jhu-counties.csv
 	@mkdir -p data-products
 	Rscript $< -o $@ \
 	  --writeMetadata $(dp)/case-death-rr-metadata.json \
@@ -92,8 +92,7 @@ $(dp)/case-death-rr.csv $(dp)/case-death-rr-metadata.json: R/join-JHU-vaccines.R
 
 $(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json: R/join-state-JHU-vaccines.R \
   $(dp)/vaccines-counties.csv \
-  $(dp)/jhu-states.csv \
-  $(dp)/jhu-states-metadata.json
+  $(dp)/jhu-states.csv
 	@mkdir -p data-products
 	Rscript $< -o $@ \
    	  --writeMetadata $(dp)/case-death-rr-state-metadata.json \
