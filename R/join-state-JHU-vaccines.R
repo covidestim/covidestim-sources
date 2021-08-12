@@ -54,7 +54,7 @@ vax <- read_csv(
 pd()
 
 ps("Loading metadata from {.file {args$metadata}}")
-metadata <- jsonlite::read_json(args$metadata)
+metadata <- jsonlite::read_json(args$metadata, simplifyVector = T)
 pd()
 
 ps("Joining JHU and vax data")
@@ -113,6 +113,6 @@ pd()
 
 if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {args$writeMetadata}}")
-  jsonlite::write_json(metadata, args$writeMetadata)
+  jsonlite::write_json(metadata, args$writeMetadata, null = "null")
   pd()
 }
