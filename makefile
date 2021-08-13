@@ -9,22 +9,8 @@ nyt := data-sources/nytimes-data
 dp := data-products
 ds := data-sources
 
-# Target for the three case/death data files we want to produce
-data: $(dp)/covidtracking-smoothed.csv $(dp)/jhu-counties.csv $(dp)/jhu-states.csv
-
 clean: 
-	@rm -f $(data)
-
-# This recipe produces smoothed test-positivty data from the Covid Tracking
-# Project.
-# However they transitioned away from offering data through Git and moved to
-# a purely api-based approach
-#
-# data-products/covidtracking-smoothed.csv: $(cvdt)/data/states_daily_4pm_et.csv \
-#   R/cleanCTP.R
-# 	@mkdir -p data-products/
-# 	git submodule update --remote $(cvdt)
-# 	Rscript R/cleanCTP.R -o $@ $<
+	@rm -rf data-products
 
 # This recipe produces cleaned state-level data from the Covid Tracking Project
 # API.
