@@ -3,6 +3,7 @@ library(dplyr,     warn.conflicts = FALSE)
 library(readr,     warn.conflicts = FALSE)
 library(docopt,    warn.conflicts = FALSE)
 library(magrittr,  warn.conflicts = FALSE)
+library(purrr,     warn.conflicts = FALSE)
 library(cli,       warn.conflicts = FALSE)
 library(stringr,   warn.conflicts = FALSE)
                     
@@ -29,6 +30,8 @@ Options:
 ps <- cli_process_start
 pd <- cli_process_done
 
+detect_all <- function(input, pats) map(pats, ~str_detect(input, .)) %>% reduce(`|`)
+
 args   <- docopt(doc, version = 'cleanJHU-counties 0.1')
 
 output_path       <- args$o
@@ -48,8 +51,9 @@ cols(
 ) -> col_types.jhuDeaths
 
 cols(
-  fipsPattern = col_character(),
-  nonReportingBegins = col_date(format='%Y-%m-%d')
+  fips = col_character(),
+  nonReportingBegins = col_date(format = "%Y-%m-%d"),
+  nonReportingNote = col_character()
 ) -> col_types.nonreporting
 
 ps("Loading JHU cases data from {.file {cases_path}}")
@@ -194,6 +198,13 @@ metadata <- unknownCountiesStripped %>%
     minInputDate = min(date),
     maxInputDate = max(date)
   )
+
+metadata <- left_join(
+  metadata,
+  nonreporting,
+  by = "fips"
+)
+
 jsonlite::write_json(metadata, metadata_path, null = "null")
 pd()
 
