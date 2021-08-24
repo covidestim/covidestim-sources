@@ -1,0 +1,8 @@
+state,code,reason
+American Samoa,EXCLUDE_LIST,On the list of excluded states
+Diamond Princess,EXCLUDE_LIST,On the list of excluded states
+Grand Princess,EXCLUDE_LIST,On the list of excluded states
+Guam,EXCLUDE_LIST,On the list of excluded states
+Northern Mariana Islands,EXCLUDE_LIST,On the list of excluded states
+Virgin Islands,EXCLUDE_LIST,On the list of excluded states
+Recovered,EXCLUDE_LIST,On the list of excluded states
