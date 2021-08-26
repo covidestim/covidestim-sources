@@ -171,10 +171,17 @@ rejects <- bind_rows(
 )
 pd()
 
-ps("Removing counties for which we lack population size data")
-startingFIPS <- unique(shortCountiesStripped$fips)
+ps("Removing Nebraska counties' data after June 30, 2021")
+nebraskaClipped <- filter(
+  shortCountiesStripped,
+  !(str_detect(fips, '^31') & (date > as.Date('2021-06-30')))
+)
+pd()
 
-unknownCountiesStripped <- filter(shortCountiesStripped, fips %in% unique(popsize$fips))
+ps("Removing counties for which we lack population size data")
+startingFIPS <- unique(nebraskaClipped$fips)
+
+unknownCountiesStripped <- filter(nebraskaClipped, fips %in% unique(popsize$fips))
 
 endingFIPS <- unique(unknownCountiesStripped$fips)
 rejects <- bind_rows(
