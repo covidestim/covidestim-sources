@@ -12,22 +12,6 @@ ds := data-sources
 clean: 
 	@rm -rf data-products
 
-# This recipe produces cleaned state-level data from the Covid Tracking Project
-# API.
-$(dp)/covidtracking-smoothed.csv: R/cleanCTP.R
-	@mkdir -p data-products/
-	wget -O ctp_tmp.csv 'https://api.covidtracking.com/v1/states/daily.csv'
-	Rscript R/cleanCTP.R -o $@ ctp_tmp.csv
-	@rm -f ctp_tmp.csv
-
-# This recipe produces cleaned state-level data from the Covid Tracking Project
-# API, but clips it at date %
-$(dp)/covidtracking-smoothed-clipped-%.csv: R/cleanCTP.R
-	@mkdir -p data-products/
-	wget -O ctp_tmp.csv 'https://api.covidtracking.com/v1/states/daily.csv'
-	Rscript R/cleanCTP.R -o $@ --maxdate $* ctp_tmp.csv
-	@rm -f ctp_tmp.csv
-
 # This recipe produces cleaned county-level data from the JHU repo
 $(dp)/jhu-counties.csv $(dp)/jhu-counties-rejects.csv $(dp)/jhu-counties-metadata.json &: R/cleanJHU-counties.R \
   $(jhu_data)/time_series_covid19_confirmed_US.csv \
