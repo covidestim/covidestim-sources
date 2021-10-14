@@ -76,13 +76,7 @@ NYTunique <- full_join(
 
 cli_h3("Unique to NYT:")
 cli_ul()
-  fipsText <- tibble(fips=NYTunique) %>%
-    left_join(
-      select(albersusa::counties_sf(), fips, name, lsad, state),
-      by = 'fips'
-    ) %>%
-    transmute(text = glue('{fips} ({name} {lsad}, {state})')) %>% pull(text)
-walk(fipsText, cli_li)
+walk(NYTunique, cli_li)
 cli_end()
 
 final <- bind_rows(
