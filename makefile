@@ -12,7 +12,7 @@ ds := data-sources
 clean: 
 	@rm -rf data-products
 
-# This recipe produces cleaned county-level data from the JHU repo
+# JHU county-level cleaned data
 $(dp)/jhu-counties.csv $(dp)/jhu-counties-rejects.csv $(dp)/jhu-counties-metadata.json &: R/cleanJHU-counties.R \
   $(jhu_data)/time_series_covid19_confirmed_US.csv \
   $(jhu_data)/time_series_covid19_deaths_US.csv \
@@ -27,7 +27,7 @@ $(dp)/jhu-counties.csv $(dp)/jhu-counties-rejects.csv $(dp)/jhu-counties-metadat
 	  --cases  $(jhu_data)/time_series_covid19_confirmed_US.csv \
 	  --deaths $(jhu_data)/time_series_covid19_deaths_US.csv
 
-# JHU state data, prefilled with archived covid tracking project data
+# JHU state-level cleaned data, prefilled with archived covid tracking project data
 $(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv $(dp)/jhu-states-metadata.json &: R/cleanJHU-states.R \
   $(jhu_reports) \
   splicedates.csv \
@@ -40,6 +40,7 @@ $(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv $(dp)/jhu-states-metadata.json
 	  --writeMetadata $(dp)/jhu-states-metadata.json \
 	  --reportsPath  $(jhu_reports)
 
+# NYTimes county-level cleaned data
 $(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv $(dp)/nytimes-counties-metadata.json &: R/cleanNYT-counties.R \
   $(nyt)/us-counties.csv \
   data-sources/fipspop.csv \
@@ -52,21 +53,41 @@ $(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv $(dp)/nytimes-coun
 	  --writeRejects $(dp)/nytimes-counties-rejects.csv \
 	  $(nyt)/us-counties.csv
 
+# Combination of JHU and NYTimes county-level data. When both data sources
+# contain a county, JHU is chosen.
+$(dp)/combined-counties.csv $(dp)/combined-counties-rejects.csv $(dp)/combined-counties-metadata.json &: R/combine-JHU-NYT-counties.R \
+  $(dp)/nytimes-counties.csv \
+  $(dp)/nytimes-counties-rejects.csv \
+  $(dp)/nytimes-counties-metadata.json \
+  $(dp)/jhu-counties.csv \
+  $(dp)/jhu-counties-rejects.csv \
+  $(dp)/jhu-counties-metadata.json
+	@mkdir -p data-products/
+	Rscript $< -o $(dp)/combined-counties.csv \
+	  --jhu $(dp)/jhu-counties.csv \
+	  --nyt $(dp)/nytimes-counties.csv \
+	  --metadataJHU $(dp)/jhu-counties-metadata.json \
+	  --metadataNYT $(dp)/nytimes-counties-metadata.json \
+	  --rejectsJHU $(dp)/jhu-counties-rejects.csv \
+	  --rejectsNYT $(dp)/nytimes-counties-rejects.csv \
+	  --writeRejects $(dp)/combined-counties-rejects.csv \
+	  --writeMetadata $(dp)/combined-counties-metadata.json
+
 $(dp)/vaccines-counties.csv:
 	@mkdir -p data-products/
 	Rscript -e "readr::write_csv(vaccineAdjust::run(), '$@')" || \
 	  gunzip < data-sources/vaccines-backup.csv.gz > $@
 
-$(dp)/case-death-rr.csv $(dp)/case-death-rr-metadata.json &: R/join-JHU-vaccines.R \
+$(dp)/case-death-rr.csv $(dp)/case-death-rr-metadata.json &: R/join-combined-with-vaccines-data.R \
   $(dp)/vaccines-counties.csv \
-  $(dp)/jhu-counties.csv \
-  $(dp)/jhu-counties-metadata.json
+  $(dp)/combined-counties.csv \
+  $(dp)/combined-counties-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr.csv \
 	  --writeMetadata $(dp)/case-death-rr-metadata.json \
-	  --metadata $(dp)/jhu-counties-metadata.json \
 	  --vax $(dp)/vaccines-counties.csv \
-	  --jhu $(dp)/jhu-counties.csv
+	  --metadata $(dp)/combined-counties-metadata.json \
+	  --casedeath $(dp)/combined-counties.csv
 
 $(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-state-JHU-vaccines.R \
   $(dp)/vaccines-counties.csv \
