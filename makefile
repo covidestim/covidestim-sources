@@ -56,10 +56,15 @@ $(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv $(dp)/jhu-states-metadata.json
 	  --writeMetadata $(dp)/jhu-states-metadata.json \
 	  --reportsPath  $(jhu_reports)
 
-$(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv &: R/cleanNYT-counties.R \
-  $(nyt)/us-counties.csv
+$(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv $(dp)/nytimes-counties-metadata.json &: R/cleanNYT-counties.R \
+  $(nyt)/us-counties.csv \
+  data-sources/fipspop.csv \
+  data-sources/county-nonreporting.csv
 	@mkdir -p data-products/
 	Rscript $< -o $(dp)/nytimes-counties.csv \
+	  --pop data-sources/fipspop.csv \
+	  --nonreporting data-sources/county-nonreporting.csv \
+	  --writeMetadata $(dp)/nytimes-counties-metadata.json \
 	  --writeRejects $(dp)/nytimes-counties-rejects.csv \
 	  $(nyt)/us-counties.csv
 

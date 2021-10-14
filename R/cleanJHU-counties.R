@@ -30,8 +30,6 @@ Options:
 ps <- cli_process_start
 pd <- cli_process_done
 
-detect_all <- function(input, pats) map(pats, ~str_detect(input, .)) %>% reduce(`|`)
-
 args   <- docopt(doc, version = 'cleanJHU-counties 0.1')
 
 output_path       <- args$o
@@ -203,6 +201,7 @@ metadata <- unknownCountiesStripped %>%
   group_by(fips) %>%
   summarize(
     minInputDate = min(date),
+    dataSource   = "jhu",
     maxInputDate = max(date)
   )
 
