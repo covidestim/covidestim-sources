@@ -4,6 +4,7 @@ jhu_reports := data-sources/jhu-data/csse_covid_19_data/csse_covid_19_daily_repo
 
 # Path to NYTimes submodule
 nyt := data-sources/nytimes-data
+gtown := data-sources/gtown-vax
 
 # Short for data-products, data-sources
 dp := data-products
@@ -73,29 +74,57 @@ $(dp)/combined-counties.csv $(dp)/combined-counties-rejects.csv $(dp)/combined-c
 	  --writeRejects $(dp)/combined-counties-rejects.csv \
 	  --writeMetadata $(dp)/combined-counties-metadata.json
 
-$(dp)/vaccines-counties.csv:
+$(dp)/rr-counties.csv:
 	@mkdir -p data-products/
 	Rscript -e "readr::write_csv(vaccineAdjust::run(), '$@')" || \
-	  gunzip < data-sources/vaccines-backup.csv.gz > $@
+	  gunzip < data-sources/rr-backup.csv.gz > $@
 
-$(dp)/case-death-rr.csv $(dp)/case-death-rr-metadata.json &: R/join-combined-with-vaccines-data.R \
-  $(dp)/vaccines-counties.csv \
+# [case, death, risk-ratio] data for counties
+# 
+# case and death data are sourced from JHU+NYT
+#
+# risk-ratio data are the product of several sources, see the `vaccinesAdjust`
+# package.
+$(dp)/case-death-rr.csv $(dp)/case-death-rr-metadata.json &: R/join-combined-with-rr-data.R \
+  $(dp)/rr-counties.csv \
   $(dp)/combined-counties.csv \
   $(dp)/combined-counties-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr.csv \
 	  --writeMetadata $(dp)/case-death-rr-metadata.json \
-	  --vax $(dp)/vaccines-counties.csv \
+	  --rr $(dp)/rr-counties.csv \
 	  --metadata $(dp)/combined-counties-metadata.json \
 	  --casedeath $(dp)/combined-counties.csv
 
-$(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-state-JHU-vaccines.R \
-  $(dp)/vaccines-counties.csv \
-  $(dp)/jhu-states.csv \
-  $(dp)/jhu-states-metadata.json
+# [case, death, risk-ratio, vaccinated-proportion] data for counties.
+#  ^JHU/NYT ^same ^various    ^georgetown            <-- sources
+# Penultimate target for counties
+$(dp)/case-death-rr-vax.csv $(dp)/case-death-rr-vax-metadata.json &: R/join-and-impute-vaccines-timeseries.R \
+  $(dp)/case-death-rr.csv \
+  $(dp)/case-death-rr-metadata.json \
+  $(gtown)/vacc_data/data_county_timeseries.csv
 	@mkdir -p data-products
-	Rscript $< -o $(dp)/case-death-rr-state.csv \
+	Rscript $< -o $(dp)/case-death-rr-vax.csv \
+	  --writeMetadata $(dp)/case-death-rr-vax-metadata.json \
+	  --metadata $(dp)/case-death-rr-metadata.json \
+	  --caseDeathRR $(dp)/case-death-rr.csv \
+	  --vax $(gtown)/vacc_data/data_county_timeseries.csv
+
+# [case, death, risk-ratio, vaccinated-proportion] data for states.
+#  ^JHU/CTP ^same ^various    ^georgetown            <-- sources
+$(dp)/case-death-rr-vax-state.csv $(dp)/case-death-rr-vax-state-metadata.json &: R/join-state-JHU-rr-vaccines.R \
+  $(dp)/rr-counties.csv \
+  $(dp)/jhu-states.csv \
+  $(dp)/jhu-states-metadata.json \
+  $(dp)/case-death-rr-vax.csv \
+  $(ds)/fipspop.csv \
+  $(ds)/fipsstate.csv
+	@mkdir -p data-products
+	Rscript $< -o $(dp)/case-death-rr-vax-state.csv \
    	  --writeMetadata $(dp)/case-death-rr-state-metadata.json \
 	  --metadata $(dp)/jhu-states-metadata.json \
-	  --vax $(dp)/vaccines-counties.csv \
-	  --jhu $(dp)/jhu-states.csv
+	  --jhu $(dp)/jhu-states.csv \
+	  --rr $(dp)/rr-counties.csv \
+	  --countyvax $(dp)/case-death-rr-vax.csv \
+	  --pop data-sources/fipspop.csv \
+	  --statemap data-sources/fipsstate.csv

@@ -4,3 +4,6 @@
 [submodule "data-sources/jhu-data"]
 	path = data-sources/jhu-data
 	url = https://github.com/CSSEGISandData/COVID-19
+[submodule "data-sources/gtown-vax"]
+	path = data-sources/gtown-vax
+	url = https://github.com/bansallab/vaccinetracking
