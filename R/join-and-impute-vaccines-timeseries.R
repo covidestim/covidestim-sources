@@ -59,23 +59,141 @@ vax <- read_csv(
 )
 
 # Fix their incorrect treatment of FIPS codes (leading 0 problems)...
-# Creates new columns `statefips` and `fips`
+# Creates new columns `statefips` and `fips` and rename date and pop
 vax <- mutate(
   vax,
   # State FIPS area always 2 characters
   statefips = as.character(STATE) %>% ifelse(str_length(.) == 2, ., paste0("0", .)),
-  fips = as.character(COUNTY) %>% ifelse(str_length(.) == 5, ., paste0("0", .)),
-)
+  fips = as.character(COUNTY) %>% ifelse(str_length(.) == 5, ., paste0("0", .))
+) %>%
+  rename(date = DATE, pop = POPN)
 pd()
 
 ps("Loading metadata from {.file {args$metadata}}")
 metadata <- jsonlite::read_json(args$metadata, simplifyVector = T)
 pd()
-        
+
+
 cli_h1("Imputing")
 
+firstDate <- as.Date("2021-01-10")
+thisDate  <- Sys.Date()
+nlag      <- 22
+
+ps("Imputing missing weekly data")
+illegalStateFips <- c("66", "72", "78") # GU, PR, VI
+
+allWeekDates <- vax %>% 
+  filter(!statefips %in% illegalStateFips) %>%
+  group_by(fips, pop) %>%
+  summarize(date = seq.Date(firstDate, thisDate, by = 7),
+            .groups = 'drop')
+
+vax %>%
+  filter(date >= firstDate) %>%
+  filter(!statefips %in% illegalStateFips) %>%
+  mutate(casetype = str_replace(CASE_TYPE, " ", "")) %>%
+  select(date, fips, casetype,pop, CASES) %>%
+  pivot_wider(id_cols = c(fips,date,pop), 
+              names_from = "casetype" , values_from = "CASES") %>%
+  full_join(allWeekDates, by = c("fips","date","pop")) %>%
+  group_by(fips) %>%
+  arrange(date) %>%
+  mutate(Partial = if_else(date == firstDate,
+                           if_else(is.na(Partial),
+                                   0,
+                                   Partial),
+                           Partial),
+         Complete = if_else(date == firstDate,
+                            if_else(is.na(Complete),
+                                    0,
+                                    Complete),
+                            Complete),
+    Partial_imp = zoo::na.approx(Partial, na.rm = FALSE, 
+                                      x = as.numeric(date - date[1])),
+         Complete_imp = zoo::na.approx(Complete, na.rm = FALSE, 
+                                       x = as.numeric(date - date[1]))
+  ) %>% ungroup() -> vax_week
+pd()
+
+ps("Disaggregation to daily data -- takes ~5 minutes")
+
+week_to_day <- function(v, date, firstDate = firstDate){
+  vid <- predict(tempdisagg::td(v~1, conversion = "first", 
+                                to = 7, method = "denton-cholette", 
+                                h = 2, criterion = "additive"))
+  vid[which(vid < 0)] <- 0 # force negative values to be 0
+  return(vid)
+}
+
+# separate steps to disaggregate Partial vaccinated and Complete vaccianted
+# to ensure all observered data points of either are used
+vax_week %>%   
+  filter(date %in% unique(allWeekDates$date)) %>%
+  group_by(fips) %>%
+  arrange(date) %>%
+  summarize(fips      = fips[1],
+            pop       = pop[1],
+            Partial_day       = week_to_day(Partial_imp, date),
+             date   = seq.Date(firstDate,
+                               length.out = length(Partial_day),
+                              by = 1)
+  ) %>% ungroup() -> vax_day_part
+
+vax_week %>%   
+  filter(date %in% unique(allWeekDates$date)) %>%
+  group_by(fips) %>%
+  arrange(date) %>%
+  summarize(fips      = fips[1],
+            pop       = pop[1],
+            Complete_day      = week_to_day(Complete_imp, date),
+             date   = seq.Date(firstDate,
+                               length.out = length(Complete_day),
+                              by = 1)
+  ) %>% ungroup() -> vax_day_comp
+  vax_day <- full_join(vax_day_part, vax_day_comp, by = c("fips",
+                                                          "pop", "date"))
+
+pd()
+
+ps("Imputing NAs at end of timeseries")
+
+rev_lag <- function(x, nlag = 22){
+  c(x[(nlag+1):length(x)], rep(NA,nlag))
+}
+
+vax_day %>%
+  full_join(vax_week, 
+            by = c("fips", "date", "pop")) %>% 
+  group_by(fips) %>%
+  arrange(date) %>%
+  # create lagged fully vaccinated and fraction fully vaccinated
+  # and push last observation forward
+  mutate(full_vax_lag = zoo::na.locf(rev_lag(Complete_day, nlag), na.rm = FALSE),
+         frac_full_vax = zoo::na.locf(full_vax_lag/Partial_day, na.rm = FALSE),
+         Partial_day_imp = if_else(frac_full_vax == 0,
+                                0,
+                                full_vax_lag/frac_full_vax),
+         vax_n = if_else(is.na(Partial_day),
+                            Partial_day_imp,
+                              Partial_day),
+         vax_n = if_else((vax_n < Complete_day),
+                              Complete_day,
+                             vax_n),
+         vaccinated = zoo::na.locf(vax_n/pop),
+         vaccinated = if_else(vaccinated > 1,
+                       .999,
+                       vaccinated)
+  ) %>% ungroup() %>% 
+  select(c(date, fips, vaccinated)) -> vax_day_imp
+
+pd()
+
 # Imputing, joining etc
-final <- mutate(caseDeathRR, vaccinated = 0)
+ps("Joining caseDeathRR with vaccinated")
+final <- full_join(caseDeathRR, vax_day_imp, 
+                   by = c("date","fips"))
+pd()
 
 cli_h1("Writing")
 
