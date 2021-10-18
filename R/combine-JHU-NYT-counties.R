@@ -41,12 +41,19 @@ input_data_spec = cols(
   deaths = col_number()
 )
 
+
 ps("Loading JHU case-death data from {.file {args$jhu}}")
 jhu <- read_csv(args$jhu, col_types = input_data_spec)
 pd()
 
 ps("Loading JHU case-death state data from {.file {args$jhu-state}}")
-jhuState <- read_csv(args$jhu, col_types = input_data_spec)
+jhuState <- read_csv(args$jhu-state, col_types = cols(
+  date = col_date(),
+  state = col_character(),
+  cases = col_number(),
+  deaths = col_number(),
+  fracpos = col_number(),
+  volume = col_number()))
 pd()
 
 ps("Loading FIPS-state map from {.file {args$statemap}}")
