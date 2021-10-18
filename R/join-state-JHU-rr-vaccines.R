@@ -96,13 +96,24 @@ left_join(
 ) -> joined
 pd()
 
-########## TO BE EDITED ###############
-########## TO BE EDITED ###############
-########## TO BE EDITED ###############
-cli_h1("Imputing state-level vaccine data")
+####################################
+## State level vaccination data ####
+####################################
+
+cli_h1("Aggregaging county-level vaccine data to state-level vaccine data")
 
 ps("Generating and \"joining\" fake state-level vaccine data")
-joined <- mutate(joined, vaccinated = 0)
+
+state_vax <- countyvax %>% left_join(pop, by = "fips") %>%
+  left_join(statemap, by = "fips") %>%
+  mutate(vax_n = vaccinated * pop) %>%
+  group_by(state, date) %>%
+  summarize(vax_n = sum(vax_n),
+            pop = sum(pop)) %>%
+  ungroup() %>%
+  mutate(vaccinated = vax_n / pop) 
+  
+joined <- left_join(joined, state_vax, by = c("state", "date"))
 pd()
         
 ###############
