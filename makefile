@@ -68,8 +68,8 @@ $(dp)/combined-counties.csv $(dp)/combined-counties-rejects.csv $(dp)/combined-c
 	@mkdir -p data-products/
 	Rscript $< -o $(dp)/combined-counties.csv \
 	  --jhu $(dp)/jhu-counties.csv \
-	  --jhu-state $(dp)/jhu-states.csv \
-	  --statemap $(ds)/fipsstate.csv \
+	  --jhuState $(dp)/jhu-states.csv \
+	  --statemap data-sources/fipsstate.csv \
 	  --nyt $(dp)/nytimes-counties.csv \
 	  --metadataJHU $(dp)/jhu-counties-metadata.json \
 	  --metadataNYT $(dp)/nytimes-counties-metadata.json \
