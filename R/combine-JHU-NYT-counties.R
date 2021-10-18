@@ -9,13 +9,15 @@ ps <- cli_process_start; pd <- cli_process_done
 'JHU/NYT county-level data combiner
 
 Usage:
-  combine-JHU-NYT-counties.R -o <path> --jhu <path> --nyt <path> --metadataJHU <path> --metadataNYT <path> --rejectsJHU <path> --rejectsNYT <path> [--writeRejects <path>] [--writeMetadata <path>]
+  combine-JHU-NYT-counties.R -o <path> --jhu <path> --jhu-state <path> --statemap <path> --nyt <path> --metadataJHU <path> --metadataNYT <path> --rejectsJHU <path> --rejectsNYT <path> [--writeRejects <path>] [--writeMetadata <path>]
   combine-JHU-NYT-counties.R (-h | --help)
   combine-JHU-NYT-counties.R --version
 
 Options:
   -o <path>               Path to output joined data to.
   --jhu <path>            Path to cleaned JHU county-level data
+  --jhu-state <path>      Path to cleaned JHU state-level data
+  --statemap <path>       Path to .csv mapping from FIPS=>state [fips, state]
   --nyt <path>            Path to cleaned NYT county-level data
   --metadataJHU <path>    Where metadata .json describing JHU data is stored
   --metadataNYT <path>    Where metadata .json describing NYT data is stored
@@ -41,6 +43,17 @@ input_data_spec = cols(
 
 ps("Loading JHU case-death data from {.file {args$jhu}}")
 jhu <- read_csv(args$jhu, col_types = input_data_spec)
+pd()
+
+ps("Loading JHU case-death state data from {.file {args$jhu-state}}")
+jhuState <- read_csv(args$jhu, col_types = input_data_spec)
+pd()
+
+ps("Loading FIPS-state map from {.file {args$statemap}}")
+statemap <- read_csv(
+  args$statemap,
+  col_types = 'cc'
+)
 pd()
 
 ps("Loading NYT case-death data from {.file {args$nyt}}")
@@ -84,10 +97,63 @@ final <- bind_rows(
   filter(nyt, fips %in% NYTunique)
 )
 
+#######################
+## Nebraska counties ##
+#######################
+cli_h1("Projecting Nebraska county-level cases and deaths based on state distribution")
+
+ps("Projecting Nebraska counties")
+
+# find the cumulative cases / deaths at state level
+nebraskaState <- jhu-state %>%
+  filter(state == "Nebraska") %>%
+  arrange(date) %>%
+  mutate(cum_case = cumsum(cases),
+         cum_death = cumsum(deaths)) %>%
+  filter(date == as.Date("2021-06-30")) 
+
+# find cumulative cases / deaths at county level,
+# and compute ratio wrt national level
+nebraskaCounties <- filter(
+  final, str_detect(fips, '^31')) %>%
+  group_by(fips) %>%
+  arrange(date) %>%
+  mutate(cum_case = cumsum(cases),
+         cum_death = cumsum(deaths)) %>% 
+  ungroup() %>%
+  filter(date == as.Date("2021-06-30")) %>%
+  mutate(rel_case = cum_case/nebraskaState$cum_case,
+         rel_death = cum_death/nebraskaState$cum_death) %>%
+  select(fips, date, rel_case, rel_death)
+
+# rename variables in state data
+state_data <- jhu-state %>% rename(case_state = case,
+                     death_state = death) 
+
+# create projection for fips in Nebraska and after June 30 2021.
+proj_data <- final %>% left_join(statemap, by = "fips") %>%
+  full_join(state_data, by = c("date","state")) %>%
+  left_join(nebraskaCounties, by = c("date","fips")) %>%
+  mutate(case_proj = if_else(str_detect(fips, "^31^") & 
+                               date > as.Date("2021-06-30"),
+                             case_state * rel_case,
+                             case),
+         death_proj = if_else(str_detect(fips, "^31") &
+                                date > as.Date("2021-06-30"),
+                              death_state * rel_death,
+                              death)
+         )
+
+# select and rename variables for writing
+final_with_projection <- final %>%
+  select(date, fips, case_proj, death_proj) %>%
+  rename(case = case_proj,
+         death = death_proj)
+
 cli_h1("Writing outputs")
 
 ps("Writing combined case-death data to {.file {args$o}}")
-write_csv(final, args$o)
+write_csv(final_with_projection, args$o)
 pd()
 
 if (!is.null(args$writeMetadata)) {
