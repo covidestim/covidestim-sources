@@ -77,7 +77,7 @@ pd()
 cli_h1("Imputing")
 
 firstDate <- as.Date("2021-01-10")
-thisDate  <- Sys.Date()
+thisDate  <- max(caseDeathRR$date)
 nlag      <- 22
 
 ps("Imputing missing weekly data")
@@ -189,9 +189,9 @@ vax_day %>%
 
 pd()
 
-# Imputing, joining etc
+# Left joining caseDeathRR and vaccinated data
 ps("Joining caseDeathRR with vaccinated")
-final <- full_join(caseDeathRR, vax_day_imp, 
+final <- left_join(caseDeathRR, vax_day_imp, 
                    by = c("date","fips"))
 pd()
 
