@@ -180,6 +180,7 @@ vax_day %>%
          vax_n = if_else((vax_n < Complete_day),
                               Complete_day,
                              vax_n),
+         vax_n = round(vax_n),
          vaccinated = zoo::na.locf(vax_n/pop),
          vaccinated = if_else(vaccinated > 1,
                        .999,

@@ -131,24 +131,35 @@ nebraskaCounties <- filter(
   filter(date == as.Date("2021-06-30")) %>%
   mutate(rel_case = cum_case/nebraskaState$cum_case,
          rel_death = cum_death/nebraskaState$cum_death) %>%
-  select(fips, date, rel_case, rel_death)
+  select(fips, rel_case, rel_death)
 
 # rename variables in state data
 state_data <- jhuState %>% rename(case_state = cases,
                      death_state = deaths) 
 
 # create projection for fips in Nebraska and after June 30 2021.
-proj_data <- final %>% left_join(statemap, by = "fips") %>%
+
+allDates <- filter(
+  final, str_detect(fips, '^31')) %>%
+  group_by(fips) %>%
+  summarize(date = seq.Date(min(date), max(state_data$date), by = 1)) %>%
+  ungroup()
+
+proj_data <- final %>% 
+  full_join(allDates, by = c("fips","date")) %>%
+  left_join(statemap, by = "fips") %>%
   full_join(state_data, by = c("date","state")) %>%
-  left_join(nebraskaCounties, by = c("date","fips")) %>%
-  mutate(case_proj = if_else(str_detect(fips, "^31^") & 
+  left_join(nebraskaCounties, by = "fips") %>%
+  mutate(case_proj = if_else(str_detect(fips, "^31") & 
                                date > as.Date("2021-06-30"),
                              case_state * rel_case,
                              cases),
          death_proj = if_else(str_detect(fips, "^31") &
                                 date > as.Date("2021-06-30"),
                               death_state * rel_death,
-                              deaths)
+                              deaths),
+         case_proj = round(case_proj),
+         death_proj = round(death_proj)
          )
 
 # select and rename variables for writing
