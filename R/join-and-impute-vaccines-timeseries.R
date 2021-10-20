@@ -162,6 +162,34 @@ rev_lag <- function(x, nlag = 22){
   c(x[(nlag+1):length(x)], rep(NA,nlag))
 }
 
+# function to filter both unreasonable dips and peaks 
+# and enforce a monotonic timeseries.
+noPeaks <- function(x){
+  revx <- rev(x)
+  mono_bw <- revx
+  mono_fw <- x
+  
+  #create a monotonic timeseries going forward and backward
+  for(i in 2:length(x)){
+    if(mono_bw[i] > mono_bw[i-1]) {mono_bw[i] <- mono_bw[i-1]}
+    if(mono_fw[i] < mono_fw[i-1]) {mono_fw[i] <- mono_fw[i-1]}
+  }
+
+  mono_fw_rev <- rev(mono_fw)
+  # moving backwards from last observation, 
+  # selecting the maximum of the monotonic backwards
+  # and monotonic forwards series -- if they are smaller
+  # than the previous observation.
+  for(i in 2:length(x)){
+    revx[i] <- ifelse(mono_bw[i] <= revx[i-1],
+                     ifelse(mono_fw_rev[i] <= revx[i-1],
+                            max(mono_bw[i],mono_fw_rev[i])[1],
+                            mono_bw[i]),
+                     mono_fw_rev[i])
+  }
+  rev(revx)
+}
+
 vax_day %>%
   full_join(vax_week, 
             by = c("fips", "date", "pop")) %>% 
@@ -184,7 +212,8 @@ vax_day %>%
          vaccinated = zoo::na.locf(vax_n/pop),
          vaccinated = if_else(vaccinated > 1,
                        .999,
-                       vaccinated)
+                       vaccinated),
+         vaccinated = noPeaks(vaccinated)
   ) %>% ungroup() %>% 
   select(c(date, fips, vaccinated)) -> vax_day_imp
 
