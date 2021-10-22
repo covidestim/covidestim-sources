@@ -112,9 +112,35 @@ vax %>%
     Partial_imp = zoo::na.approx(Partial, na.rm = FALSE, 
                                       x = as.numeric(date - date[1])),
          Complete_imp = zoo::na.approx(Complete, na.rm = FALSE, 
-                                       x = as.numeric(date - date[1]))
-  ) %>% ungroup() -> vax_week
+                                       x = as.numeric(date - date[1])),
+    Part_NA = sum(!is.na(Partial_imp)),
+    Complete_NA = sum(!is.na(Complete_imp)),
+    Partial_imp = if_else(Part_NA <= 1,
+                          Complete_imp,
+                          Partial_imp),
+    Complete_imp = if_else(Complete_NA <= 1,
+                           Partial_imp,
+                           Complete_imp)
+  ) %>% 
+  ungroup() -> vax_week
 pd()
+no_partial <- unique(vax_week %>% filter(Part_NA <= 1) %>% pull(fips))
+no_complete <- unique(vax_week %>% filter(Complete_NA <= 1) %>% pull(fips))
+no_vax <- intersect(no_partial, no_complete)
+cli_h3("Fips with only 1 partial vaccination:")
+cli_ul()
+walk(no_partial, cli_li)
+cli_end()
+cli_h3("Fips with only 1 complete vaccination:")
+cli_ul()
+walk(no_complete, cli_li)
+cli_end()
+cli_h3("Fips with no vaccination dadta:")
+cli_ul()
+walk(no_vax, cli_li)
+cli_end()
+
+vax_week <- filter(vax_week, ! fips %in% no_vax)
 
 ps("Disaggregation to daily data -- takes ~5 minutes")
 
@@ -233,6 +259,7 @@ pd()
 
 if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {args$writeMetadata}}")
+  metadata <- filter(metadata, !fips %in% no_vax)
   jsonlite::write_json(metadata, args$writeMetadata)
   pd()
 }
