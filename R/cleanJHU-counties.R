@@ -108,7 +108,6 @@ filterBannedFips <- function(df)
          !str_detect(fips, "^60\\d{3}"),    # AS
          !str_detect(fips, "^66\\d{3}"),    # MP, GU
          !str_detect(fips, "^69\\d{3}"),    # MP
-         !str_detect(fips, "^72\\d{3}"),    # PR
          !str_detect(fips, "^78\\d{3}"),    # VI
          !str_detect(fips, "^72999$"),      # "Unassigned" Puerto Rico
          !str_detect(fips, "^72888$"),      # "Out of" Puerto Rico

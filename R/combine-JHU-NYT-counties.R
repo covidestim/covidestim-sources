@@ -49,7 +49,7 @@ pd()
 ps("Loading JHU case-death state data from {.file {args$jhuState}}")
 jhuState <- read_csv(args$jhuState, col_types = cols(
   date = col_date(),
-  # state = col_character(),
+  state = col_character(),
   cases = col_number(),
   deaths = col_number(),
   fracpos = col_number(),
