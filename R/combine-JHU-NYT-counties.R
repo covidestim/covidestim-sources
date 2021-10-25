@@ -139,8 +139,7 @@ state_data <- jhuState %>% rename(case_state = cases,
 
 # create projection for fips in Nebraska and after June 30 2021.
 
-allDates <- filter(
-  final, str_detect(fips, '^31')) %>%
+allDates <- final %>% select(date, fips) %>%
   group_by(fips) %>%
   summarize(date = seq.Date(min(date), max(state_data$date), by = 1)) %>%
   ungroup()
@@ -148,7 +147,7 @@ allDates <- filter(
 proj_data <- final %>% 
   full_join(allDates, by = c("fips","date")) %>%
   left_join(statemap, by = "fips") %>%
-  full_join(state_data, by = c("date","state")) %>%
+  left_join(state_data, by = c("date","state")) %>%
   left_join(nebraskaCounties, by = "fips") %>%
   mutate(case_proj = if_else(str_detect(fips, "^31") & 
                                date > as.Date("2021-06-30"),
