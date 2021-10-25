@@ -135,7 +135,7 @@ cli_h3("Fips with only 1 complete vaccination:")
 cli_ul()
 walk(no_complete, cli_li)
 cli_end()
-cli_h3("Fips with no vaccination dadta:")
+cli_h3("Fips with no vaccination data:")
 cli_ul()
 walk(no_vax, cli_li)
 cli_end()
@@ -248,7 +248,8 @@ pd()
 # Left joining caseDeathRR and vaccinated data
 ps("Joining caseDeathRR with vaccinated")
 final <- left_join(caseDeathRR, vax_day_imp, 
-                   by = c("date","fips"))
+                   by = c("date","fips")) %>%
+  replace_na(list(vaccinated = 0))
 pd()
 
 cli_h1("Writing")
