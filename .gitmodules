@@ -1,4 +1,4 @@
-[submodule "covid-19-data"]
+[submodule "data-sources/nytimes-data"]
 	path = data-sources/nytimes-data
 	url = https://github.com/nytimes/covid-19-data
 [submodule "data-sources/jhu-data"]
@@ -7,3 +7,5 @@
 [submodule "data-sources/gtown-vax"]
 	path = data-sources/gtown-vax
 	url = https://github.com/bansallab/vaccinetracking
+	branch = main
+
