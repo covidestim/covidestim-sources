@@ -134,14 +134,18 @@ nebraskaCounties <- filter(
   select(fips, rel_case, rel_death)
 
 # rename variables in state data
-state_data <- jhuState %>% rename(case_state = cases,
+state_data <- jhuState %>% filter(state == "Nebraska") %>%
+  rename(case_state = cases,
                      death_state = deaths) 
 
 # create projection for fips in Nebraska and after June 30 2021.
 
-allDates <- final %>% select(date, fips) %>%
+allDates <- final %>%
+  left_join(statemap, by = "fips") %>%
+  filter(state == "Nebraska") %>% 
+  select(date, fips) %>%
   group_by(fips) %>%
-  summarize(date = seq.Date(min(date), max(state_data$date), by = 1)) %>%
+  summarize(date = seq.Date(max(date), max(state_data$date), by = 1), .groups = 'drop') %>%
   ungroup()
 
 proj_data <- final %>% 

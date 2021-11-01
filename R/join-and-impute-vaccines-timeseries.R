@@ -83,6 +83,13 @@ nlag      <- 22
 ps("Imputing missing weekly data")
 illegalStateFips <- c("66", "72", "78") # GU, PR, VI
 
+allDayDates <- vax %>% 
+  filter(!statefips %in% illegalStateFips) %>%
+  group_by(fips, pop) %>%
+  summarize(date = seq.Date(firstDate, thisDate, by = 1),
+            .groups = 'drop') %>%
+  ungroup()
+
 allWeekDates <- vax %>% 
   filter(!statefips %in% illegalStateFips) %>%
   group_by(fips, pop) %>%
@@ -219,6 +226,7 @@ noPeaks <- function(x){
 vax_day %>%
   full_join(vax_week, 
             by = c("fips", "date", "pop")) %>% 
+  full_join(allDayDates, by = c("fips", "date", "pop")) %>%
   group_by(fips) %>%
   arrange(date) %>%
   # create lagged fully vaccinated and fraction fully vaccinated
