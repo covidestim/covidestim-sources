@@ -8,7 +8,7 @@ ps <- cli_process_start; pd <- cli_process_done
 'JHU State-data / Vaccine-data Joiner
 
 Usage:
-  join-state-JHU-rr-vaccines.R -o <path> --jhu <path> --rr <path> --countyvax <path> --pop <path> --statemap <path> --metadata <path> [--writeMetadata <path>]
+  join-state-JHU-rr-vaccines.R -o <path> [--rejects <path>] [--writeRejects <path>] --jhu <path> --rr <path> --countyvax <path> --pop <path> --statemap <path> --metadata <path> [--writeMetadata <path>]
   join-state-JHU-rr-vaccines.R (-h | --help)
   join-state-JHU-rr-vaccines.R --version
 
@@ -19,6 +19,8 @@ Options:
   --countyvax <path>      Path to final county-level input data, including vaccine proportion 
   --pop <path>            Path to .csv mapping from FIPS=>population size [fips, pop]
   --statemap <path>       Path to .csv mapping from FIPS=>state [fips, state]
+  --rejects <path>        Path to .csv [state,code,reason] listing excluded states
+  --writeRejects <path>   Path to output rejected states (appended to --rejects)
   --metadata <path>       Path to JSON metadata about the cases/deaths of each state
   --writeMetadata <path>  Where to save metadata about all case/death/vaccine data
   -h --help               Show this screen.
@@ -84,6 +86,12 @@ statemap <- read_csv(
 )
 pd()
 
+if (!is.null(args$rejects)) {
+  ps("Reading rejects file from {.file {args$rejects}}")
+  rejects <- read_csv(args$rejects, col_types = "ccc")
+  pd()
+}
+
 ps("Loading metadata from {.file {args$metadata}}")
 metadata <- jsonlite::read_json(args$metadata, simplifyVector = T)
 pd()
@@ -115,6 +123,25 @@ state_vax <- countyvax %>% left_join(pop, by = "fips") %>%
   
 joined <- left_join(joined, state_vax, by = c("state", "date"))
 pd()
+
+#####################
+## Excluding PR    ##
+#####################
+cli_h1("Excluding Puerto Rico")
+
+joined <- filter(joined, state != "Puerto Rico")
+
+if (!is.null(args$rejects)) {
+  rejects = bind_rows(
+    rejects,
+    tibble(
+      state="Puerto Rico",
+      code="NO_PR",
+      reason="Excluding PR, we have no logor_vac_state data for them"
+    )
+  )
+}
+
         
 ###############
 ## Checks    ##
@@ -166,5 +193,11 @@ if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {args$writeMetadata}}")
   metadata <- filter(metadata, state %in% unique(replaced$state))
   jsonlite::write_json(metadata, args$writeMetadata, null = "null")
+  pd()
+}
+
+if (!is.null(args$writeRejects) && !is.null(args$rejects)) {
+  ps("Writing rejects to {.file {args$writeRejects}}")
+  write_csv(rejects, args$writeRejects)
   pd()
 }

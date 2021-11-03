@@ -103,20 +103,23 @@ $(dp)/case-death-rr.csv $(dp)/case-death-rr-metadata.json &: R/join-combined-wit
 # [case, death, risk-ratio, vaccinated-proportion] data for counties.
 #  ^JHU/NYT ^same ^various    ^georgetown            <-- sources
 # Penultimate target for counties
-$(dp)/case-death-rr-vax.csv $(dp)/case-death-rr-vax-metadata.json &: R/join-and-impute-vaccines-timeseries.R \
+$(dp)/case-death-rr-vax.csv $(dp)/case-death-rr-vax-metadata.json $(dp)/case-death-rr-vax-rejects.csv &: R/join-and-impute-vaccines-timeseries.R \
   $(dp)/case-death-rr.csv \
   $(dp)/case-death-rr-metadata.json \
-  $(gtown)/vacc_data/data_county_timeseries.csv
+  $(gtown)/vacc_data/data_county_timeseries.csv \
+  $(dp)/combined-counties-rejects.csv
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr-vax.csv \
+          --rejects       $(dp)/combined-counties-rejects.csv \
+	  --metadata      $(dp)/case-death-rr-metadata.json \
+	  --writeRejects  $(dp)/case-death-rr-vax-rejects.csv \
 	  --writeMetadata $(dp)/case-death-rr-vax-metadata.json \
-	  --metadata $(dp)/case-death-rr-metadata.json \
-	  --caseDeathRR $(dp)/case-death-rr.csv \
-	  --vax $(gtown)/vacc_data/data_county_timeseries.csv
+	  --caseDeathRR   $(dp)/case-death-rr.csv \
+	  --vax           $(gtown)/vacc_data/data_county_timeseries.csv
 
 # [case, death, risk-ratio, vaccinated-proportion] data for states.
 #  ^JHU/CTP ^same ^various    ^georgetown            <-- sources
-$(dp)/case-death-rr-vax-state.csv $(dp)/case-death-rr-vax-state-metadata.json &: R/join-state-JHU-rr-vaccines.R \
+$(dp)/case-death-rr-vax-state.csv $(dp)/case-death-rr-vax-state-metadata.json $(dp)/case-death-rr-vax-state-rejects.csv &: R/join-state-JHU-rr-vaccines.R \
   $(dp)/rr-counties.csv \
   $(dp)/jhu-states.csv \
   $(dp)/jhu-states-metadata.json \
@@ -125,10 +128,12 @@ $(dp)/case-death-rr-vax-state.csv $(dp)/case-death-rr-vax-state-metadata.json &:
   $(ds)/fipsstate.csv
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr-vax-state.csv \
+	  --rejects       $(dp)/jhu-states-rejects.csv \
+	  --writeRejects  $(dp)/case-death-rr-vax-state-rejects.csv \
+	  --metadata      $(dp)/jhu-states-metadata.json \
    	  --writeMetadata $(dp)/case-death-rr-state-metadata.json \
-	  --metadata $(dp)/jhu-states-metadata.json \
-	  --jhu $(dp)/jhu-states.csv \
-	  --rr $(dp)/rr-counties.csv \
-	  --countyvax $(dp)/case-death-rr-vax.csv \
-	  --pop data-sources/fipspop.csv \
-	  --statemap data-sources/fipsstate.csv
+	  --jhu           $(dp)/jhu-states.csv \
+	  --rr 	          $(dp)/rr-counties.csv \
+	  --countyvax     $(dp)/case-death-rr-vax.csv \
+	  --pop           data-sources/fipspop.csv \
+	  --statemap      data-sources/fipsstate.csv
