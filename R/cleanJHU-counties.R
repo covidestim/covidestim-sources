@@ -149,7 +149,15 @@ pd()
 
 ps("Computing incidences from cumulative data")
 diffed <- group_by(joined, fips) %>% arrange(date) %>%
-  filter(cases > 0 | deaths > 0) %>%
+  filter(
+    # Find the first date of either cases or deaths, and use this as the
+    # minimum date for each indiviudal county. This excludes the pre-data
+    # (i.e., 0-valued) portions of counties' timeseries.
+    date >= date[min(
+      which(cases  > 0) %>% first,
+      which(deaths > 0) %>% first
+    )]
+  ) %>%
   mutate_at(c('cases', 'deaths'), nonzeroDiff) %>%
   ungroup %>%
   arrange(fips)
