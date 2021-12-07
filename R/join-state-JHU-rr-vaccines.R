@@ -122,6 +122,12 @@ state_vax <- countyvax %>% left_join(pop, by = "fips") %>%
   mutate(vaccinated = vax_n / pop) 
   
 joined <- left_join(joined, state_vax, by = c("state", "date"))
+joined <- group_by(joined, state) %>%
+  mutate(
+    vax_n      = vax_n[first(which(!is.na(vax_n)))],
+    pop        = pop[first(which(!is.na(pop)))],
+    vaccinated = vaccinated[first(which(!is.na(vaccinated)))],
+  ) %>% ungroup
 pd()
 
 #####################
