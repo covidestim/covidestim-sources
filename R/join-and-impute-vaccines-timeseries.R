@@ -293,7 +293,7 @@ pd()
 
 if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {args$writeMetadata}}")
-  metadata <- filter(metadata, fips %in% final)
+  metadata <- filter(metadata, fips %in% final$fips)
   jsonlite::write_json(metadata, args$writeMetadata)
   pd()
 }

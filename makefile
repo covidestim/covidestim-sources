@@ -131,7 +131,7 @@ $(dp)/case-death-rr-vax-state.csv $(dp)/case-death-rr-vax-state-metadata.json $(
 	  --rejects       $(dp)/jhu-states-rejects.csv \
 	  --writeRejects  $(dp)/case-death-rr-vax-state-rejects.csv \
 	  --metadata      $(dp)/jhu-states-metadata.json \
-   	  --writeMetadata $(dp)/case-death-rr-state-metadata.json \
+   	  --writeMetadata $(dp)/case-death-rr-vax-state-metadata.json \
 	  --jhu           $(dp)/jhu-states.csv \
 	  --rr 	          $(dp)/rr-counties.csv \
 	  --countyvax     $(dp)/case-death-rr-vax.csv \
