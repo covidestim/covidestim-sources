@@ -8,7 +8,7 @@ ps <- cli_process_start; pd <- cli_process_done
 'JHU State-data / Vaccine-data Joiner
 
 Usage:
-  join-state-JHU-rr-vaccines.R -o <path> [--rejects <path>] [--writeRejects <path>] --jhu <path> --rr <path> --countyvax <path> --pop <path> --statemap <path> --metadata <path> [--writeMetadata <path>]
+  join-state-JHU-rr-vaccines.R -o <path> [--rejects <path>] [--writeRejects <path>] --jhu <path> --rr <path> --countyvax <path> --pop <path> --statepop <path> --statemap <path> --metadata <path> [--writeMetadata <path>]
   join-state-JHU-rr-vaccines.R (-h | --help)
   join-state-JHU-rr-vaccines.R --version
 
@@ -18,6 +18,7 @@ Options:
   --rr <path>             Path to vaccine risk-ratio data
   --countyvax <path>      Path to final county-level input data, including vaccine proportion 
   --pop <path>            Path to .csv mapping from FIPS=>population size [fips, pop]
+  --statepop <path>       Path to .csv mapping from state=>population size [state, pop]
   --statemap <path>       Path to .csv mapping from FIPS=>state [fips, state]
   --rejects <path>        Path to .csv [state,code,reason] listing excluded states
   --writeRejects <path>   Path to output rejected states (appended to --rejects)
@@ -79,6 +80,16 @@ pop <- read_csv(
 )
 pd()
 
+ps("Loading state-level population data from {.file {args$statepop}}")
+statepop_tmp <- read_csv(
+  args$statepop,
+  col_types = 'cn'
+)
+statepop <- statepop_tmp$pop
+names(statepop) <- statepop_tmp$state
+rm(statepop_tmp)
+pd()
+
 ps("Loading FIPS-state map from {.file {args$statemap}}")
 statemap <- read_csv(
   args$statemap,
@@ -110,22 +121,22 @@ pd()
 
 cli_h1("Aggregaging county-level vaccine data to state-level vaccine data")
 
-ps("Generating and \"joining\" fake state-level vaccine data")
+ps("Generating and \"joining\" synthetic (built from counties) state-level vaccine data")
 
 state_vax <- countyvax %>% left_join(pop, by = "fips") %>%
   left_join(statemap, by = "fips") %>%
   mutate(vax_n = vaccinated * pop) %>%
   group_by(state, date) %>%
-  summarize(vax_n = sum(vax_n, na.rm=T),
-            pop   = sum(pop,   na.rm=T)) %>%
-  ungroup() %>%
-  mutate(vaccinated = vax_n / pop) 
+  summarize(
+    vax_n      = sum(vax_n, na.rm=T),
+    vaccinated = sum(vax_n, na.rm=T)/statepop[cur_group()$state], 
+    .groups = 'drop'
+  )
   
 joined <- left_join(joined, state_vax, by = c("state", "date"))
 joined <- group_by(joined, state) %>%
   mutate(
     vax_n      = ifelse(is.na(vax_n), 0, vax_n),
-    pop        = max(pop),
     vaccinated = ifelse(is.na(vaccinated), 0, vaccinated)
   ) %>% ungroup
 pd()

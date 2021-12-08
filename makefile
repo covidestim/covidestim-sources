@@ -136,4 +136,5 @@ $(dp)/case-death-rr-vax-state.csv $(dp)/case-death-rr-vax-state-metadata.json $(
 	  --rr 	          $(dp)/rr-counties.csv \
 	  --countyvax     $(dp)/case-death-rr-vax.csv \
 	  --pop           data-sources/fipspop.csv \
+	  --statepop      data-sources/statepop.csv \
 	  --statemap      data-sources/fipsstate.csv
