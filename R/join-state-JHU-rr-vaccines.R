@@ -116,17 +116,17 @@ state_vax <- countyvax %>% left_join(pop, by = "fips") %>%
   left_join(statemap, by = "fips") %>%
   mutate(vax_n = vaccinated * pop) %>%
   group_by(state, date) %>%
-  summarize(vax_n = sum(vax_n),
-            pop = sum(pop)) %>%
+  summarize(vax_n = sum(vax_n, na.rm=T),
+            pop   = sum(pop,   na.rm=T)) %>%
   ungroup() %>%
   mutate(vaccinated = vax_n / pop) 
   
 joined <- left_join(joined, state_vax, by = c("state", "date"))
 joined <- group_by(joined, state) %>%
   mutate(
-    vax_n      = vax_n[first(which(!is.na(vax_n)))],
-    pop        = pop[first(which(!is.na(pop)))],
-    vaccinated = vaccinated[first(which(!is.na(vaccinated)))],
+    vax_n      = ifelse(is.na(vax_n), 0, vax_n),
+    pop        = max(pop),
+    vaccinated = ifelse(is.na(vaccinated), 0, vaccinated)
   ) %>% ungroup
 pd()
 
