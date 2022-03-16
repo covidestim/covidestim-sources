@@ -70,7 +70,7 @@ cli_h1("Performing checks")
 
 # Check to make sure each county only has non-missing RRs after the initial
 # pre-vaccine-data period of NAs.
-ps("No missing RR's after first non-missing RR")
+ps("No missing RRs after first non-missing RR")
   NAsAfterBeginning <- joined %>% group_by(fips) %>% arrange(date) %>%
     summarize(
       NAsAreOnlyAtTheBeginning = 

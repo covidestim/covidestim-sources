@@ -163,7 +163,7 @@ diffed <- group_by(joined, fips) %>% arrange(date) %>%
   arrange(fips)
 pd()
 
-ps("Removing counties with fewer than 60 days' observations")
+ps("Removing counties with fewer than 60 days observations")
 startingFIPS <- unique(diffed$fips)
 
 shortCountiesStripped <- group_by(diffed, fips) %>% filter(n() > 60) %>% ungroup
@@ -179,7 +179,7 @@ rejects <- bind_rows(
 )
 pd()
 
-ps("Removing Nebraska counties' data after June 30, 2021")
+ps("Removing Nebraska counties data after June 30, 2021")
 nebraskaClipped <- filter(
   shortCountiesStripped,
   !(str_detect(fips, '^31') & (date > as.Date('2021-06-30')))
