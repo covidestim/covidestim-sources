@@ -43,16 +43,84 @@ cols(
   admissionsAdultsSuspected = col_double(),
   admissionsPedsConfirmed = col_double(),
   admissionsPedsSuspected = col_double(),
-  admissionsAdultsConfirmed.min = col_double(),
-  admissionsAdultsConfirmed.max = col_double(),
-  admissionsAdultsSuspected.min = col_double(),
-  admissionsAdultsSuspected.max = col_double(),
-  admissionsPedsConfirmed.min = col_double(),
-  admissionsPedsConfirmed.max = col_double(),
-  admissionsPedsSuspected.min = col_double(),
-  admissionsPedsSuspected.max = col_double(),
+  averageAdultInpatientsConfirmed = col_double(),
+  averageAdultInpatientsConfirmedSuspected = col_double(),
+  averageAdultICUPatientsConfirmed = col_double(),
+  averageAdultICUPatientsConfirmedSuspected = col_double(),
+  covidRelatedEDVisits = col_double(),
+
+  admissionsAdultsConfirmed_min  = col_double(),
+  admissionsAdultsConfirmed_max  = col_double(),
+  admissionsAdultsConfirmed_max2 = col_double(),
+
+  admissionsAdultsSuspected_min  = col_double(),
+  admissionsAdultsSuspected_max  = col_double(),
+  admissionsAdultsSuspected_max2 = col_double(),
+
+  admissionsPedsConfirmed_min  = col_double(),
+  admissionsPedsConfirmed_max  = col_double(),
+  admissionsPedsConfirmed_max2 = col_double(),
+
+  admissionsPedsSuspected_min  = col_double(),
+  admissionsPedsSuspected_max  = col_double(),
+  admissionsPedsSuspected_max2 = col_double(),
+
+  averageAdultInpatientsConfirmed_min  = col_double(),
+  averageAdultInpatientsConfirmed_max  = col_double(),
+  averageAdultInpatientsConfirmed_max2 = col_double(),
+
+  averageAdultInpatientsConfirmedSuspected_min  = col_double(),
+  averageAdultInpatientsConfirmedSuspected_max  = col_double(),
+  averageAdultInpatientsConfirmedSuspected_max2 = col_double(),
+
+  averageAdultICUPatientsConfirmed_min  = col_double(), 
+  averageAdultICUPatientsConfirmed_max  = col_double(), 
+  averageAdultICUPatientsConfirmed_max2 = col_double(), 
+
+  averageAdultICUPatientsConfirmedSuspected_min  = col_double(), 
+  averageAdultICUPatientsConfirmedSuspected_max  = col_double(), 
+  averageAdultICUPatientsConfirmedSuspected_max2 = col_double(), 
+
+  # Note: `_coverage` variable is not available for this outcome
+  covidRelatedEDVisits_min  = col_double(),
+  covidRelatedEDVisits_max  = col_double(),
+  # covidRelatedEDVisits_max2 = col_double(),
+
   hsanum = col_double()
 ) -> cleanedhhsSpec
+
+prefixes <- c("admissions", "averageAdult", "covidRelated")
+
+valueVariables <- c(
+  "admissionsAdultsConfirmed",
+  "admissionsAdultsSuspected",
+  "admissionsPedsConfirmed",
+  "admissionsPedsSuspected",
+  "averageAdultInpatientsConfirmed",
+  "averageAdultInpatientsConfirmedSuspected",
+  "averageAdultICUPatientsConfirmed",
+  "averageAdultICUPatientsConfirmedSuspected",
+  "covidRelatedEDVisits"
+)
+
+valueVariablesWithCoverageAvailable <- c(
+  "admissionsAdultsConfirmed",
+  "admissionsAdultsSuspected",
+  "admissionsPedsConfirmed",
+  "admissionsPedsSuspected",
+  "averageAdultInpatientsConfirmed",
+  "averageAdultInpatientsConfirmedSuspected",
+  "averageAdultICUPatientsConfirmed",
+  "averageAdultICUPatientsConfirmedSuspected"
+  # "covidRelatedEDVisits"
+)
+
+valueAndBoundsVariables <- c(
+  valueVariables,
+  paste0(valueVariables, "_min"),
+  paste0(valueVariables, "_max"),
+  paste0(valueVariablesWithCoverageAvailable, "_max2")
+)
 
 ps("Reading cleaned HHS hospital admission file {.file {args$cleanedhhs}}")
 cleanedhhs <- read_csv(args$cleanedhhs, col_types = cleanedhhsSpec)
@@ -66,16 +134,24 @@ censoredSum <- function(v) ifelse(-999999 %in% v, -999999, sum(v))
 
 ps("Computing admissions by HSA")
 admissionsByHHS <- cleanedhhs %>% group_by(hsanum, weekstart) %>%
-  summarize(across(starts_with("admissions"), censoredSum)) %>%
-  ungroup
+  summarize(across(all_of(valueAndBoundsVariables), censoredSum), .groups = 'drop')
 pd()
+
+rescaleFacilitiesForWeek <- function(outcome, proportion)
+  ifelse(outcome == -999999, -999999, outcome * proportion)
 
 ps("Computing per-county admissions using FIPS=>HSA mappings")
 admissionsByFIPS <- fipsMapping %>%
   left_join(admissionsByHHS, by = c("hsa" = "hsanum")) %>%
   group_by(fips, weekstart) %>%
-  summarize(across(starts_with("admissions"), censoredSum)) %>%
-  ungroup
+  mutate(
+    across(
+      all_of(valueAndBoundsVariables),
+      ~rescaleFacilitiesForWeek(.x, proportion)
+    )
+  ) %>%
+  summarize(across(all_of(valueAndBoundsVariables), censoredSum), .groups = 'drop') %>%
+  mutate(across(all_of(valueAndBoundsVariables), round))
 pd()
 
 out <- admissionsByFIPS

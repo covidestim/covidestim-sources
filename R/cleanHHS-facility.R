@@ -23,7 +23,7 @@ Options:
 ps <- cli_process_start
 pd <- cli_process_done
 
-args   <- docopt(doc, version = 'cleanHHS.R 0.1')
+args <- docopt(doc, version = 'cleanHHS.R 0.1')
 
 # Fake args for debugging/development
 # args <- list(
@@ -51,7 +51,9 @@ hhsSpec <- cols(
   hospital_subtype = col_character(),
   fips_code = col_character(),
   is_metro_micro = col_logical(),
-  geocoded_hospital_address = col_character()
+  geocoded_hospital_address = col_character(),
+  hhs_ids = col_character(),
+  is_corrected = col_logical()
 )
 
 ps("Reading crosswalk file {.file {crosswalk_path}}")
@@ -70,7 +72,7 @@ pd()
 
 # Any negative number that is not -999999 is coerced to NA
 # (-999999 is the code used for numbers which fall between 1-3)
-cleanAdmissions <- function(v) case_when(
+cleanCensored <- function(v) case_when(
   is.na(v)     ~ as.numeric(NA),
   v == -999999 ~ -999999,
   v < 0        ~ as.numeric(NA), # Assume any non-999999 negative numbers are nonsensical
@@ -78,8 +80,46 @@ cleanAdmissions <- function(v) case_when(
 )
 
 # Computes min/max for censored data
-admissionsMin <- function(v) ifelse(v == -999999, 1, v)
-admissionsMax <- function(v) ifelse(v == -999999, 3, v)
+censoredMin <- function(v) ifelse(v == -999999, 1, v)
+censoredMax <- function(v) ifelse(v == -999999, 3, v)
+
+prefixes <- c("admissions", "averageAdult", "covidRelated")
+
+valueVariables <- c(
+  "admissionsAdultsConfirmed",
+  "admissionsAdultsSuspected",
+  "admissionsPedsConfirmed",
+  "admissionsPedsSuspected",
+  "averageAdultInpatientsConfirmed",
+  "averageAdultInpatientsConfirmedSuspected",
+  "averageAdultICUPatientsConfirmed",
+  "averageAdultICUPatientsConfirmedSuspected",
+  "covidRelatedEDVisits"
+)
+
+# The "covid-related ED visits" outcome doesn't have coverage available -
+# maybe it's a weekly report and not reported to HHS on a daily basis. So,
+# we can't compute the `_max2` outcome on this, because there was apparently
+# only "one" report.
+valueVariablesWithCoverageAvailable <- c(
+  "admissionsAdultsConfirmed",
+  "admissionsAdultsSuspected",
+  "admissionsPedsConfirmed",
+  "admissionsPedsSuspected",
+  "averageAdultInpatientsConfirmed",
+  "averageAdultInpatientsConfirmedSuspected",
+  "averageAdultICUPatientsConfirmed",
+  "averageAdultICUPatientsConfirmedSuspected"
+  # "covidRelatedEDVisits"
+)
+
+# See note above.
+valueAndBoundsVariables <- c(
+  valueVariables,
+  paste0(valueVariables, "_min"),
+  paste0(valueVariables, "_max"),
+  paste0(valueVariablesWithCoverageAvailable, "_max2")
+)
 
 ps("Cleaning admissions data")
 cleaned <- transmute(
@@ -97,21 +137,88 @@ cleaned <- transmute(
   admissionsAdultsConfirmed = previous_day_admission_adult_covid_confirmed_7_day_sum,
   admissionsAdultsSuspected = previous_day_admission_adult_covid_suspected_7_day_sum,
   admissionsPedsConfirmed   = previous_day_admission_pediatric_covid_confirmed_7_day_sum,
-  admissionsPedsSuspected   = previous_day_admission_pediatric_covid_suspected_7_day_sum
+  admissionsPedsSuspected   = previous_day_admission_pediatric_covid_suspected_7_day_sum,
+
+  # Number of reports for a particular outcome received in a particular week.
+  admissionsAdultsConfirmed_nobs = previous_day_admission_adult_covid_confirmed_7_day_coverage,
+  admissionsAdultsSuspected_nobs = previous_day_admission_adult_covid_suspected_7_day_coverage,
+  admissionsPedsConfirmed_nobs   = previous_day_admission_pediatric_covid_confirmed_7_day_coverage,
+  admissionsPedsSuspected_nobs   = previous_day_admission_pediatric_covid_suspected_7_day_coverage,
+
+  # HHS Definition:
+  #
+  # Average number of patients currently hospitalized in an adult inpatient bed
+  # who have laboratory-confirmed COVID-19, including those in observation
+  # beds. This average includes patients who have both laboratory-confirmed
+  # COVID-19 and laboratory-confirmed influenza.
+  averageAdultInpatientsConfirmed = total_adult_patients_hospitalized_confirmed_covid_7_day_avg,
+  averageAdultInpatientsConfirmed_nobs = total_adult_patients_hospitalized_confirmed_covid_7_day_coverage,
+
+  averageAdultInpatientsConfirmedSuspected = total_adult_patients_hospitalized_confirmed_and_suspected_covid_7_day_avg,
+  averageAdultInpatientsConfirmedSuspected_nobs = total_adult_patients_hospitalized_confirmed_and_suspected_covid_7_day_coverage,
+
+  # HHS Definition:
+  #
+  # Average number of patients currently hospitalized in a designated adult ICU
+  # bed who have laboratory-confirmed COVID-19. Including patients who have
+  # both laboratory-confirmed COVID-19 and laboratory-confirmed influenza in
+  # this field reported in the 7-day period.
+  averageAdultICUPatientsConfirmed = staffed_icu_adult_patients_confirmed_covid_7_day_avg,
+  averageAdultICUPatientsConfirmed_nobs = staffed_icu_adult_patients_confirmed_covid_7_day_coverage,
+  
+  averageAdultICUPatientsConfirmedSuspected = staffed_icu_adult_patients_confirmed_and_suspected_covid_7_day_avg,
+  averageAdultICUPatientsConfirmedSuspected_nobs = staffed_icu_adult_patients_confirmed_and_suspected_covid_7_day_coverage,
+  
+  # HHS Definition:
+  #
+  # Sum of total number of ED visits who were seen on the previous calendar day
+  # who had a visit related to COVID-19 (meets suspected or confirmed
+  # definition or presents for COVID diagnostic testing – do not count patients
+  # who present for pre-procedure screening) reported in 7-day period.
+  covidRelatedEDVisits = previous_day_covid_ED_visits_7_day_sum,
 ) %>%
   # Clean all the admissions data
-  mutate(across(starts_with("admissions"), cleanAdmissions)) %>%
+  mutate(across(all_of(valueVariables), cleanCensored)) %>%
   # Compute min/max of censored data
   mutate(
     across(
-      starts_with("admissions"),
+      all_of(valueVariables),
       list(
-        min = admissionsMin,
-        max = admissionsMax
+        min = censoredMin,
+        max = censoredMax
       ),
-      .names = "{.col}.{.fn}"
+      .names = "{.col}_{.fn}"
     )
-  )
+  ) %>%
+  # Compute max2
+  #
+  # If there are six reports in a week, for the purposes of this analysis,
+  # we will assume that those six reports are for only six days, and the 
+  # seventh day's data just never gets reported. The `_max2` variable is an
+  # estimation of what the outcome would be if the "missing" days were filled
+  # in with the average rate of admissions.
+  mutate(
+    admissionsAdultsConfirmed_max2 = 
+      admissionsAdultsConfirmed_max * 7/admissionsAdultsConfirmed_nobs,
+    admissionsAdultsSuspected_max2 = 
+      admissionsAdultsSuspected_max * 7/admissionsAdultsSuspected_nobs,
+    admissionsPedsConfirmed_max2 = 
+      admissionsPedsConfirmed_max * 7/admissionsPedsConfirmed_nobs,
+    admissionsPedsSuspected_max2 = 
+      admissionsPedsSuspected_max * 7/admissionsPedsSuspected_nobs,
+
+    # These two have already been averaged by HHS over the number of 
+    # reports they got that week so it's pointless to apply our methodology
+    # to thse two quantities - these are the only two quantities tht are
+    # averages.
+    averageAdultInpatientsConfirmed_max2 = averageAdultInpatientsConfirmed_max,
+    averageAdultICUPatientsConfirmed_max2 = averageAdultICUPatientsConfirmed_max,
+
+    averageAdultInpatientsConfirmedSuspected_max2 = averageAdultInpatientsConfirmedSuspected_max,
+    averageAdultICUPatientsConfirmedSuspected_max2 = averageAdultICUPatientsConfirmedSuspected_max,
+  ) %>%
+  # We don't need the `_nobs` variables anymore
+  select(-ends_with("_nobs"))
 pd()
 
 # Because this uses an inner join rather than a left join, this operation
@@ -140,7 +247,7 @@ weekToDay <- function(v) {
 }
 
 byday <- group_by(joined, hospital_pk) %>%
-  mutate_at(vars(starts_with("admissions")), ~weekToDay(.))
+  mutate_at(vars(all_of(valueAndBoundsVariables)), weekToDay)
 
 ##############################################################################
 ##                     END OF WEEK => DAY CONVERSION                        ##

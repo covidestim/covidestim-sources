@@ -3,6 +3,10 @@ suppressPackageStartupMessages( library(tidyverse) )
 library(docopt, warn.conflicts = FALSE)
 library(cli,    warn.conflicts = FALSE)
 library(sf,     warn.conflicts = FALSE)
+
+# Turn off spherical coordinate subsystem, avoids some geometry errors. See:
+# https://stackoverflow.com/questions/68478179/how-to-resolve-spherical-geometry-failures-when-joining-spatial-data
+sf::sf_use_s2(FALSE)
                     
 'HSA splittter: splits HSAs into counties according to CBG-level pop estimates.
 
@@ -61,6 +65,14 @@ pd()
 # Then, the centroids of each CBG are calculated. This is done so that each
 # CBG is within at most one HSA - since otherwise it would be possible for the
 # polygonal shape of a CBG to intersect two HSAs.
+#
+# Note: `st_centroid()` will give a warning about lat/long and planar geometry.
+#   It's true that using lat/long will introduce some error in the centroid
+#   calculations. However, my judgement is that this is safe to ignore for
+#   calculating the centroids of CBGs because they are mostly very small in
+#   size. For more information on this, see:
+#
+#   https://r-spatial.github.io/sf/articles/sf6.html
 ps("Joining population data to CBG polygons and calculating CBG centroids")
 cbgpopCentroids <- mutate(cbgpop, GEOID = str_sub(GEOID, 8, 19)) %>%
   inner_join(cbgpolygons, by = 'GEOID') %>%
@@ -82,6 +94,8 @@ cbgpopCentroids <- mutate(cbgpopCentroids, geometry = st_transform(geometry, 432
 pd()
 
 ps("Joining CBG centroids to HSA polygons using {.code st_nearest_feature} operator")
+# `st_nearest_feature()` will complain about lat/long geometry, just like 
+# `st_centroid()`. The same rationale is used to ignore the warning.
 cbgsWithHSA <- st_join(cbgpopCentroids, hsapolygons, join = st_nearest_feature) %>%
   select(GEOID, fips, population, hsa = HSA93) %>%
   as_tibble
