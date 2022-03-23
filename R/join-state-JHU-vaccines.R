@@ -72,7 +72,7 @@ cli_h1("Performing checks")
 
 # Check to make sure each state only has non-missing RRs after the initial
 # pre-vaccine-data period of NAs.
-ps("No missing RR's after first non-missing RR")
+ps("No missing RRs after first non-missing RR")
   NAsAfterBeginning <- joined %>% group_by(state) %>% arrange(date) %>%
     summarize(
       NAsAreOnlyAtTheBeginning = 
@@ -93,7 +93,7 @@ ps("No unrealistically high or low RRs ({.code RR<0 | RR>1.5})")
 AnyUnrealisticValues <- filter(joined, RR < 0 | RR > 1.5)
 
 if (nrow(AnyUnrealisticValues) > 0) {
-  cli_alert_danger("There unrealistic vaccine RR's for these counties:")
+  cli_alert_danger("There unrealistic vaccine RRs for these counties:")
   print(AnyUnrealisticValues)
   quit(status = 1)
 }
