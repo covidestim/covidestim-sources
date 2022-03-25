@@ -3,10 +3,10 @@
 This repository provides a way to easily clean various input data used for 
 the `covidestim` model to produce the following easy-to-use outcomes:
 
-- **Cases** `make data-products/{case-death-rr,case-death-rr-state}.csv`
-- **Deaths** `"..."`
-- **Vaccination-related risk ratio** `"..."`
-- **Hospitalizations** (experimental) `make data-products/hhs-hospitalizations-by-county.csv`
+- **Cases**
+- **Deaths**
+- **Vaccination-related risk ratio**
+- **Hospitalizations** (experimental)
 
 These data are offered at the following geographies:
 
@@ -32,11 +32,10 @@ make -Bj data-products/{case-death-rr.csv,case-death-rr-state.csv,hospitalizatio
 
 ## Staying current
 
-Data sources backed by HTTP requests or Git submodules (i.e., *all* data
-sources), will **not** automatically update, and thus, `make` will not normally
-do anything if you attempt to remake a target. This is undesirable if you
-believe there may be newer versions of data sources available. To pull new data
-from sources backed by submodules, run:
+Data sources will **not** automatically update, and thus, `make` will not
+normally do anything if you attempt to remake a target. This is undesirable if
+you believe there may be newer versions of data sources available. To pull new
+data from sources backed by submodules, run:
 
 ```bash
 git submodule update --remote
@@ -83,27 +82,29 @@ and cleaning of all data sources.
 
 ## Targets
 
-- `make data-products/case-death-rr.csv`: Clean JHU county-level case/death
-  data. Also writes a file `jhu-counties-rejects.csv` for counties which were
-  eliminated during the cleaning process. Any metadata for counties included in
-  the cleaned data will be stored in `case-death-rr-metadata.json`.
+- **`make data-products/case-death-rr.csv`**  
+  Clean JHU county-level case/death data. Also writes a file
+  `jhu-counties-rejects.csv` for counties which were eliminated during the
+  cleaning process. Any metadata for counties included in the cleaned data will
+  be stored in `case-death-rr-metadata.json`.
 
-- `make data-products/case-death-rr-state.csv`: Clean JHU state-level data, splicing in
-  archived Covid Tracking Project data. For details on this, see the
-  `makefile`. Also writes `jhu-states-rejects.csv`. Any metadata for counties
-  included in the cleaned data will be stored in `case-death-rr-metadata.json`. 
+- **`make data-products/case-death-rr-state.csv`**  
+  Clean JHU state-level data, splicing in archived Covid Tracking Project data.
+  For details on this, see the `makefile`. Also writes
+  `jhu-states-rejects.csv`. Any metadata for counties included in the cleaned
+  data will be stored in `case-death-rr-metadata.json`. 
 
-- `make data-products/nyt-counties.csv`: Clean NYT county-level case/death
-  data. Writes `nyt-counties-rejects.csv`.
+- **`make data-products/nyt-counties.csv`**  
+  Clean NYT county-level case/death data. Writes `nyt-counties-rejects.csv`.
 
-- `make data-products/hhs-hospitalizations-by-county.csv`: County-level aggregation
-  of facility level hospitalization data. See the next section for details on
-  how this is done.
+- **`make data-products/hhs-hospitalizations-by-county.csv`**  
+  County-level aggregation of facility level hospitalization data. See the next
+  section for details on how this is done.
 
-- `make data-products/hhs-hospitalizations-by-facility.csv`: Cleans facility-level
-  data from DHHS's API and annotates each faility with an HSA id. Also,
-  computes .min and .max columns to compensate for censoring done when there
-  are 1-3 hospitalizations in a given week.
+- **`make data-products/hhs-hospitalizations-by-facility.csv`**  
+  Cleans facility-level data from DHHS's API and annotates each faility with an
+  HSA id. Also, computes .min and .max columns to compensate for censoring done
+  when there are 1-3 hospitalizations in a given week.
 
 ## Hospitalizations data pipeline
 
