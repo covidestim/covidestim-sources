@@ -90,13 +90,6 @@ $(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-
 	  --vax $(dp)/vaccines-counties.csv \
 	  --jhu $(dp)/jhu-states.csv
 
-$(dp)/hhs-hospitalizations-by-facility.csv: R/cleanHHS-facility.R \
-	$(ds)/ZipHsaHrr18.csv \
-	$(ds)/hhs-hospitalizations-by-week.csv
-	Rscript $< -o $@ \
-	  --crosswalk $(ds)/ZipHsaHrr18.csv \
-	  --hhs $(ds)/hhs-hospitalizations-by-week.csv
-
 # Hospitalizations by county: aggregates hospitalizations by facility into
 # counties using "fips-hsa-mapping.csv"
 $(dp)/hhs-hospitalizations-by-county.csv: R/cleanHHS-county.R \
