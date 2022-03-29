@@ -138,7 +138,8 @@ following variables may be present:
 
   **Note**: This quantity is not meaningful for the following averaged
   prevalence outcomes, because they are already averaged across the number of
-  days reported by the facility that week (which is not necessarily 7):
+  days reported by the facility that week (which is not necessarily 7). For
+  these outcomes, `{name}_max == {name}_max2`.
 
   - `averageAdultICUPatientsConfirmed`
   - `averageAdultICUPatientsConfirmedSuspected` 
@@ -147,19 +148,19 @@ following variables may be present:
 
 ### Outcomes table
 
-| Variable                                    | Meaning                                                                                                 | `min`/`max` | `max2` |
-|---------------------------------------------|---------------------------------------------------------------------------------------------------------|-------------|--------|
-| `fips`                                      | FIPS code of the county                                                                                 |             |        |
-| `weekstart`                                 | YYYY-MM-DD of the firs date in the week                                                                 |             |        |
-| `admissionsAdultsConfirmed`                 | # admissions of adults with confirmed[^1] Covid                                                         | ✓           | ✓      |
-| `admissionsAdultsSuspected`                 | # admissions of adults with suspected[^2] Covid                                                         | ✓           | ✓      |
-| `admissionsPedsConfirmed`                   | # admissions of peds with confirmed[^1] Covid                                                           | ✓           | ✓      |
-| `admissionsPedsSuspected`                   | # admissions of peds with suspected[^2] Covid                                                           | ✓           | ✓      |
-| `averageAdultICUPatientsConfirmed`          | Average number of ICU beds occupied by adults with confirmed[^1] covid that week                        | ✓           | ✓      |
-| `averageAdultICUPatientsConfirmedSuspected` | Average number of ICU beds occupied by adults with confirmed or suspected[^1][^2] covid that week       | ✓           | ✓      |
-| `averageAdultInpatientsConfirmed`           | Average number of inpatient beds occupied by adults with confirmed[^1] Covid that week                  | ✓           | ✓      |
-| `averageAdultInpatientsConfirmedSuspected`  | Average number of inpatient beds occupied by adults with confirmed[^1] or suspected[^2] Covid that week | ✓           | ✓      |
-| `covidRelatedEDVisits`                      | Total number of ED visits that week related to Covid[^3]                                                | ✓           |        |
+| Variable                                    | Meaning                                                                                                 | `min`/`max` | `max2`         |
+|---------------------------------------------|---------------------------------------------------------------------------------------------------------|-------------|----------------|
+| `fips`                                      | FIPS code of the county                                                                                 |             |                |
+| `weekstart`                                 | YYYY-MM-DD of the firs date in the week                                                                 |             |                |
+| `admissionsAdultsConfirmed`                 | # admissions of adults with confirmed[^1] Covid                                                         | ✓           | ✓              |
+| `admissionsAdultsSuspected`                 | # admissions of adults with suspected[^2] Covid                                                         | ✓           | ✓              |
+| `admissionsPedsConfirmed`                   | # admissions of peds with confirmed[^1] Covid                                                           | ✓           | ✓              |
+| `admissionsPedsSuspected`                   | # admissions of peds with suspected[^2] Covid                                                           | ✓           | ✓              |
+| `averageAdultICUPatientsConfirmed`          | Average number of ICU beds occupied by adults with confirmed[^1] covid that week                        | ✓           | equal to `max` |
+| `averageAdultICUPatientsConfirmedSuspected` | Average number of ICU beds occupied by adults with confirmed or suspected[^1][^2] covid that week       | ✓           | equal to `max` |
+| `averageAdultInpatientsConfirmed`           | Average number of inpatient beds occupied by adults with confirmed[^1] Covid that week                  | ✓           | equal to `max` |
+| `averageAdultInpatientsConfirmedSuspected`  | Average number of inpatient beds occupied by adults with confirmed[^1] or suspected[^2] Covid that week | ✓           | equal to `max` |
+| `covidRelatedEDVisits`                      | Total number of ED visits that week related to Covid[^3]                                                | ✓           |                |
 
 [^1]: Definition of "Laboratory-confirmed Covid":  
   ![Definition of "Laboratory-confirmed covid"](/img/lab-confirmed-covid.png)
@@ -185,8 +186,8 @@ following variables may be present:
 <b style="color: grey;">County boundaries</b>, <b style="color: red;">HSA boundaries</b>, <b style="color: blue;">CBG boundaries</b>
 ![Map of county, HSA, CBG borders](/img/agg-disagg.png)
 
-Simply identifying which county each facility in and then summing across all
-facilities in a county carries the following drawbacks:
+Simply identifying which county each facility lies within and then summing
+across all facilities in a county carries the following drawbacks:
 
 - It ignores the fact that the hospital may be treating patients from other
   counties.
@@ -215,12 +216,12 @@ area for each hospital:
 > ensure geographic contiguity. Most hospital service areas contain only one
 > hospital. The process resulted in 3,436 HSAs.
 
-Importantly, HSA's are only an approximation of a catchment area, and since
-a patient may very well travel outside of the "catchment area" for care with
-some nonzero probability, the concept of a catchment area as "patient
-always goes to a hospital in this polygon" has inherent limitations to fully
-capture patient facility choice - especially since these polygons **do not
-intersect**. See [this paper][paper] for a discussion of these problems.
+Importantly, HSA's are only an approximation of a catchment area, and since a
+patient may very well travel outside of the "catchment area" for care with some
+nonzero probability, the concept of a catchment area as "patient always goes to
+a hospital in this polygon" has inherent limitations as far as fully capturing
+patient facility choice. See [this 2015 paper][paper] by Kilaru and Carr for a
+discussion of these problems.
 
 #### Methodology
 
