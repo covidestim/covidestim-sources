@@ -108,5 +108,74 @@ and cleaning of all data sources.
 
 ## Hospitalizations data pipeline
 
-*In progress...*
+Key document: **[COVID-19 Guidance for Hospital Reporting and FAQs For
+Hospitals, Hospital Laboratory, and Acute Care Facility Data Reporting][hhs]**,
+January 6, 2022 revision
 
+### Outcome format
+
+Outcomes are presented across 3-4 variables. For an outcome `name`, the 
+following variables may be present:
+
+- `name`: The outcome itself, including censored data. This means that if a
+  facility reports `-999999` for that week, the `name` outcome will be equal
+  to `-999999`.
+
+- `min`: The smallest the outcome could be - all censored values, which each
+  represent a possible range of 1-3, will be resolved to 1.
+
+- `max`: The largest the outcome could be if all censored values are resolved to
+  3.
+
+- `max2`: The largest the outcome could be if all censored valeus are resolved
+  to 3 and any missing days are imputed using the average of the present days.  
+
+  **Note**: This quantity is not meaningful for the following prevalence
+  outcomes:
+
+  - `averageAdultICUPatientsConfirmed`
+  - `averageAdultICUPatientsConfirmedSuspected` 
+  - `averageAdultInpatientsConfirmed`
+  - `averageAdultInpatientsConfirmedSuspected`
+
+### Outcomes table
+
+| Variable                                  | Meaning                                                                                                 | `min`/`max` | `max2` |
+|-------------------------------------------|---------------------------------------------------------------------------------------------------------|-------------|--------|
+| fips                                      | FIPS code of the county                                                                                 |             |        |
+| weekstart                                 | YYYY-MM-DD of the firs date in the week                                                                 |             |        |
+| admissionsAdultsConfirmed                 | # admissions of adults with confirmed[^1] Covid                                                         | ✓           | ✓      |
+| admissionsAdultsSuspected                 | # admissions of adults with suspected[^2] Covid                                                         | ✓           | ✓      |
+| admissionsPedsConfirmed                   | # admissions of peds with confirmed[^1] Covid                                                           | ✓           | ✓      |
+| admissionsPedsSuspected                   | # admissions of peds with suspected[^2] Covid                                                           | ✓           | ✓      |
+| averageAdultICUPatientsConfirmed          | Average number of ICU beds occupied by adults with confirmed[^1] covid that week                        | ✓           | ✓      |
+| averageAdultICUPatientsConfirmedSuspected | Average number of ICU beds occupied by adults with confirmed or suspected[^1][^2] covid that week       | ✓           | ✓      |
+| averageAdultInpatientsConfirmed           | Average number of inpatient beds occupied by adults with confirmed[^1] Covid that week                  | ✓           | ✓      |
+| averageAdultInpatientsConfirmedSuspected  | Average number of inpatient beds occupied by adults with confirmed[^1] or suspected[^2] Covid that week | ✓           | ✓      |
+| covidRelatedEDVisits                      | Total number of ED visits that week related to Covid[^3]                                                | ✓           |        |
+
+[^1]: Definition of "Laboratory-confirmed Covid":
+
+  ![Definition of "Laboratory-confirmed covid"](lab-confirmed-covid.png)
+
+  Source: Page 44, [HHS hospital reporting guidance][hhs]
+
+[^2]: Definition of "suspected Covid":
+
+  > “Suspected” is defined as a person who is being managed as though he/she
+  > has COVID-19 because of signs and symptoms suggestive of COVID-19 but does
+  > not have a laboratory-positive COVID-19 test result."
+
+  Source: Page 14, [HHS hospital reporting guidance][hhs]
+
+[^3]: Definition of "related to Covid":
+  > Enter the total number of ED visits who were seen on the previous calendar
+  > day who had a visit related to suspected or laboratory-confirmed COVID-19.
+  > Do not count patients who receive a COVID-19 test solely for screening
+  > purposes in the absence of COVID-19 symptoms.
+
+  Source: Page 14, [HHS hospital reporting guidance][hhs]
+
+[hhs]: https://www.hhs.gov/sites/default/files/covid-19-faqs-hospitals-hospital-laboratory-acute-care-facility-data-reporting.pdf
+
+### Geographic aggregation/disaggregation
