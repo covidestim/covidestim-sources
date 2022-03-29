@@ -140,19 +140,19 @@ following variables may be present:
 
 ### Outcomes table
 
-| Variable                                  | Meaning                                                                                                 | `min`/`max` | `max2` |
-|-------------------------------------------|---------------------------------------------------------------------------------------------------------|-------------|--------|
-| fips                                      | FIPS code of the county                                                                                 |             |        |
-| weekstart                                 | YYYY-MM-DD of the firs date in the week                                                                 |             |        |
-| admissionsAdultsConfirmed                 | # admissions of adults with confirmed[^1] Covid                                                         | ✓           | ✓      |
-| admissionsAdultsSuspected                 | # admissions of adults with suspected[^2] Covid                                                         | ✓           | ✓      |
-| admissionsPedsConfirmed                   | # admissions of peds with confirmed[^1] Covid                                                           | ✓           | ✓      |
-| admissionsPedsSuspected                   | # admissions of peds with suspected[^2] Covid                                                           | ✓           | ✓      |
-| averageAdultICUPatientsConfirmed          | Average number of ICU beds occupied by adults with confirmed[^1] covid that week                        | ✓           | ✓      |
-| averageAdultICUPatientsConfirmedSuspected | Average number of ICU beds occupied by adults with confirmed or suspected[^1][^2] covid that week       | ✓           | ✓      |
-| averageAdultInpatientsConfirmed           | Average number of inpatient beds occupied by adults with confirmed[^1] Covid that week                  | ✓           | ✓      |
-| averageAdultInpatientsConfirmedSuspected  | Average number of inpatient beds occupied by adults with confirmed[^1] or suspected[^2] Covid that week | ✓           | ✓      |
-| covidRelatedEDVisits                      | Total number of ED visits that week related to Covid[^3]                                                | ✓           |        |
+| Variable                                    | Meaning                                                                                                 | `min`/`max` | `max2` |
+|---------------------------------------------|---------------------------------------------------------------------------------------------------------|-------------|--------|
+| `fips`                                      | FIPS code of the county                                                                                 |             |        |
+| `weekstart`                                 | YYYY-MM-DD of the firs date in the week                                                                 |             |        |
+| `admissionsAdultsConfirmed`                 | # admissions of adults with confirmed[^1] Covid                                                         | ✓           | ✓      |
+| `admissionsAdultsSuspected`                 | # admissions of adults with suspected[^2] Covid                                                         | ✓           | ✓      |
+| `admissionsPedsConfirmed`                   | # admissions of peds with confirmed[^1] Covid                                                           | ✓           | ✓      |
+| `admissionsPedsSuspected`                   | # admissions of peds with suspected[^2] Covid                                                           | ✓           | ✓      |
+| `averageAdultICUPatientsConfirmed`          | Average number of ICU beds occupied by adults with confirmed[^1] covid that week                        | ✓           | ✓      |
+| `averageAdultICUPatientsConfirmedSuspected` | Average number of ICU beds occupied by adults with confirmed or suspected[^1][^2] covid that week       | ✓           | ✓      |
+| `averageAdultInpatientsConfirmed`           | Average number of inpatient beds occupied by adults with confirmed[^1] Covid that week                  | ✓           | ✓      |
+| `averageAdultInpatientsConfirmedSuspected`  | Average number of inpatient beds occupied by adults with confirmed[^1] or suspected[^2] Covid that week | ✓           | ✓      |
+| `covidRelatedEDVisits`                      | Total number of ED visits that week related to Covid[^3]                                                | ✓           |        |
 
 [^1]: Definition of "Laboratory-confirmed Covid":
 
