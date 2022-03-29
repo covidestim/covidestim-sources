@@ -154,13 +154,13 @@ following variables may be present:
 | `averageAdultInpatientsConfirmedSuspected`  | Average number of inpatient beds occupied by adults with confirmed[^1] or suspected[^2] Covid that week | ✓           | ✓      |
 | `covidRelatedEDVisits`                      | Total number of ED visits that week related to Covid[^3]                                                | ✓           |        |
 
-[^1]: Definition of "Laboratory-confirmed Covid":
+[^1]: Definition of "Laboratory-confirmed Covid":  
   
   ![Definition of "Laboratory-confirmed covid"](lab-confirmed-covid.png)
   
   Source: Page 44, [HHS hospital reporting guidance][hhs]
 
-[^2]: Definition of "suspected Covid":
+[^2]: Definition of "suspected Covid":  
   
   > “Suspected” is defined as a person who is being managed as though he/she
   > has COVID-19 because of signs and symptoms suggestive of COVID-19 but does
@@ -168,7 +168,7 @@ following variables may be present:
   
   Source: Page 14, [HHS hospital reporting guidance][hhs]
 
-[^3]: Definition of "related to Covid":
+[^3]: Definition of "related to Covid":  
   
   > Enter the total number of ED visits who were seen on the previous calendar
   > day who had a visit related to suspected or laboratory-confirmed COVID-19.
