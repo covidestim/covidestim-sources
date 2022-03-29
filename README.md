@@ -12,10 +12,10 @@ These data are offered at the following geographies:
 
 | Outcome              | County-level | State-level |
 |----------------------|--------------|-------------|
-| **Cases**            | [x]          | [x]         |
-| **Deaths**           | [x]          | [x]         |
-| **Risk-ratio**       | [x]          | [x]         |
-| **Hospitalizations** | [x]          | [ ] *Soon*  |
+| **Cases**            | ✓            | ✓           |
+| **Deaths**           | ✓            | ✓           |
+| **Risk-ratio**       | ✓            | ✓           |
+| **Hospitalizations** | ✓            | *Soon*      |
 
 ## Usage
 
@@ -112,26 +112,33 @@ Key document: **[COVID-19 Guidance for Hospital Reporting and FAQs For
 Hospitals, Hospital Laboratory, and Acute Care Facility Data Reporting][hhs]**,
 January 6, 2022 revision
 
+We source hospitalizations data from the official [HHS facility-level dataset][hhs-data].
+In order to be useful to our model, we transform these data into a county-level
+dataset. 
+
+[hhs-data]: https://healthdata.gov/stories/s/nhgk-5gpv
+
 ### Outcome format
 
 Outcomes are presented across 3-4 variables. For an outcome `name`, the 
 following variables may be present:
 
-- `name`: The outcome itself, including censored data. This means that if a
+- `{name}`: The outcome itself, including censored data. This means that if a
   facility reports `-999999` for that week, the `name` outcome will be equal
   to `-999999`.
 
-- `min`: The smallest the outcome could be - all censored values, which each
+- `{name}_min`: The smallest the outcome could be - all censored values, which each
   represent a possible range of 1-3, will be resolved to 1.
 
-- `max`: The largest the outcome could be if all censored values are resolved to
+- `{name}_max`: The largest the outcome could be if all censored values are resolved to
   3.
 
-- `max2`: The largest the outcome could be if all censored valeus are resolved
+- `{name}_max2`: The largest the outcome could be if all censored valeus are resolved
   to 3 and any missing days are imputed using the average of the present days.  
 
-  **Note**: This quantity is not meaningful for the following prevalence
-  outcomes:
+  **Note**: This quantity is not meaningful for the following averaged
+  prevalence outcomes, because they are already averaged across the number of
+  days reported by the facility that week (which is not necessarily 7):
 
   - `averageAdultICUPatientsConfirmed`
   - `averageAdultICUPatientsConfirmedSuspected` 
@@ -174,3 +181,60 @@ following variables may be present:
 [hhs]: https://www.hhs.gov/sites/default/files/covid-19-faqs-hospitals-hospital-laboratory-acute-care-facility-data-reporting.pdf
 
 ### Geographic aggregation/disaggregation
+
+<b style="color: grey;">County boundaries</b>, <b style="color: red;">HSA boundaries</b>, <b style="color: blue;">CBG boundaries</b>
+![Map of county, HSA, CBG borders](/img/agg-disagg.png)
+
+Simply identifying which county each facility in and then summing across all
+facilities in a county carries the following drawbacks:
+
+- It ignores the fact that the hospital may be treating patients from other
+  counties.
+
+- It ignores the fact that patients from one county may be treated at a
+  hospital in an adjacent (or even non-adjacent) county.
+
+These two issues will cause particularly large problems (biases) when:
+
+- There are major medical centers in the area, which are more likely to take
+  the lion's share of severe patients during times of peak Covid prevalence.
+
+- There are small or sparsely-populated counties, where residents may have
+  to travel outside of their county to seek hospital care.
+
+To help solve this problem, we rely on a dataset maintained by the [Dartmouth
+Atlas][da] which defines geographic units called **Hospital Service Areas
+(HSA)**.  These service areas are meant to represent a notion of a catchment
+area for each hospital:
+
+> Hospital service areas (HSAs) are local health care markets for hospital
+> care. An HSA is a collection of ZIP codes whose residents receive most of
+> their hospitalizations from the hospitals in that area. HSAs were defined by
+> assigning ZIP codes to the hospital area where the greatest proportion of
+> their Medicare residents were hospitalized. Minor adjustments were made to
+> ensure geographic contiguity. Most hospital service areas contain only one
+> hospital. The process resulted in 3,436 HSAs.
+
+Importantly, HSA's are only an approximation of a catchment area, and since
+a patient may very well travel outside of the "catchment area" for care with
+some nonzero probability, the concept of a catchment area as "patient
+always goes to a hospital in this polygon" has inherent limitations to fully
+capture patient facility choice - especially since these polygons **do not
+intersect**. See [this paper][paper] for a discussion of these problems.
+
+#### Methodology
+
+![Diagram of HSA => FIPS process](/img/hospitalizations.png)
+
+Nonetheless, we use HSA's as our aggregate geographical unit because we believe
+that it is a better representation of a catchment area than what we would get
+by simply drawing the county-border enclosing each facility. To leverage these
+HSAs to create county-level hospitalizations data, We:
+
+1. Aggregate facility-level data to the HSA level
+2. Fracture the HSAs using county boundaries
+3. Use CBG population data to divide the outcomes from fractured HSA's into
+   the intersecting counties in a population-proportional manner.
+
+[paper]: https://pubmed.ncbi.nlm.nih.gov/25961661/
+[da]: https://www.dartmouthatlas.org/faq/
