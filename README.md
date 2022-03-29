@@ -155,26 +155,20 @@ following variables may be present:
 | `covidRelatedEDVisits`                      | Total number of ED visits that week related to Covid[^3]                                                | ✓           |        |
 
 [^1]: Definition of "Laboratory-confirmed Covid":  
-  
   ![Definition of "Laboratory-confirmed covid"](lab-confirmed-covid.png)
-  
   Source: Page 44, [HHS hospital reporting guidance][hhs]
 
 [^2]: Definition of "suspected Covid":  
-  
   > “Suspected” is defined as a person who is being managed as though he/she
   > has COVID-19 because of signs and symptoms suggestive of COVID-19 but does
   > not have a laboratory-positive COVID-19 test result."
-  
   Source: Page 14, [HHS hospital reporting guidance][hhs]
 
 [^3]: Definition of "related to Covid":  
-  
   > Enter the total number of ED visits who were seen on the previous calendar
   > day who had a visit related to suspected or laboratory-confirmed COVID-19.
   > Do not count patients who receive a COVID-19 test solely for screening
   > purposes in the absence of COVID-19 symptoms.
-  
   Source: Page 14, [HHS hospital reporting guidance][hhs]
 
 [hhs]: https://www.hhs.gov/sites/default/files/covid-19-faqs-hospitals-hospital-laboratory-acute-care-facility-data-reporting.pdf
