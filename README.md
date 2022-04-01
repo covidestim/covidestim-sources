@@ -62,7 +62,7 @@ make -Bj data-products/{case-death-rr.csv,case-death-rr-state.csv,hospitalizatio
 - `data-sources/`: All git submodules are stored here, as well as static files
   used in recipes, like population sizes, polygons, and records of periods
   of nonreporting.
-- `example-output/`: Some example cleaned data, for references
+- `example-output/`: Some example cleaned data, for reference
 - `R/`: All data cleaning scripts live here
 
 ## Keeping your data sources up-to-date
@@ -126,7 +126,7 @@ and cleaning of all data sources.
 - **`make data-products/case-death-rr-state.csv`**  
   Clean JHU state-level data, splicing in archived Covid Tracking Project data.
   For details on this, see the `makefile`. Also writes
-  `jhu-states-rejects.csv`. Any metadata for counties included in the cleaned
+  `jhu-states-rejects.csv`. Any metadata for states included in the cleaned
   data will be stored in `case-death-rr-metadata.json`. 
 
 - **`make data-products/nyt-counties.csv`**  
