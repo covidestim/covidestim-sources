@@ -55,7 +55,8 @@ make -Bj data-products/{case-death-rr.csv,case-death-rr-state.csv,hospitalizatio
 ## Repository structure
 
 - `makefile`: The project makefile. If you're confused about how a piece of data
-  gets cleaned, go here first.
+  gets cleaned, go here first. If you've never read a Makefile before, it's
+  advisable to read an introduction to Make, like [this one](https://web.mit.edu/gnu/doc/html/make_2.html).
 - `data-products/`: All cleaned data is written to this directory. Some recipes
   will also products metadata, which will always have a `.json` extension.
 - `data-sources/`: All git submodules are stored here, as well as static files
