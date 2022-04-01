@@ -1,7 +1,7 @@
 # covidestim-sources
 
-This repository provides a way to easily clean various input data used for 
-the `covidestim` model to produce the following easy-to-use outcomes:
+This repository provides a way to clean various input data used for the
+`covidestim` model, producing the following easy-to-use outcomes:
 
 - **Cases**
 - **Deaths**
@@ -17,23 +17,57 @@ These data are offered at the following geographies:
 | **Risk-ratio**       | ✓            | ✓           |
 | **Hospitalizations** | ✓            | *Soon*      |
 
-## Usage
+## Usage and dependencies
 
-Initialize the Git submodules:
+This repository is essentially a series of GNU Make targets (see `makefile`),
+which depend on the results of HTTP requests, as well as data sources in
+`data-sources/`. None of the "cleaned" data are committed to the repository;
+you need to make it yourself to produce it.
+
+First, install [Git LFS](https://git-lfs.github.com/).
+
+Then, clone the repository and initialize the Git submodules, which track some
+of our external data sources:
 
 ```bash
 git clone https://github.com/covidestim/covidestim-sources && cd covidestim-sources
 git submodule init
 git submodule update --remote # This will take 5-30 minutes
+```
 
+Then, make sure you have the neccessary R packages installed. These are:
+
+- `tidyverse`
+- `cli`
+- `docopt`
+- `sf`
+
+You can install them in the R console: `install.packages(c('tidyverse', 'cli', 'docopt', 'sf'))`.
+
+Finally, attempt to Make the most important targets. Note, you will need GNU Make
+installed, which does not ship with OS X.
+
+```bash
 # Make all primary outcomes
 make -Bj data-products/{case-death-rr.csv,case-death-rr-state.csv,hospitalizations-by-county.csv}
 ```
 
-## Staying current
+## Repository structure
+
+- `makefile`: The project makefile. If you're confused about how a piece of data
+  gets cleaned, go here first.
+- `data-products/`: All cleaned data is written to this directory. Some recipes
+  will also products metadata, which will always have a `.json` extension.
+- `data-sources/`: All git submodules are stored here, as well as static files
+  used in recipes, like population sizes, polygons, and records of periods
+  of nonreporting.
+- `example-output/`: Some example cleaned data, for references
+- `R/`: All data cleaning scripts live here
+
+## Keeping your data sources up-to-date
 
 Data sources will **not** automatically update, and thus, `make` will not
-normally do anything if you attempt to remake a target. This is undesirable if
+normally do anything if you attempt to remake a target! This is undesirable if
 you believe there may be newer versions of data sources available. To pull new
 data from sources backed by submodules, run:
 
@@ -51,10 +85,10 @@ make -B data-products/case-death-rr.csv
 
 All data sources for the cleaned data are either:
 
-- Committed to the repository
-- Committed to the repository, but backed by [Git LFS][lfs]
-- Accessed through HTTP requests in the `makefile` or in R scripts
-- Committed to the repository as Git submodules
+- Committed to the repository in `data-sources/`
+- Committed to the repository in `data-sources/`, but backed by [Git LFS][lfs]
+- Accessed through HTTP requests in the `makefile` or from within R scripts
+- Committed to the repository as Git submodules in `data-sources/`
 
 | Data                                      | Used for                                                                                      | Accessed through                                                                        | Frequency of update |
 |-------------------------------------------|-----------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|---------------------|
