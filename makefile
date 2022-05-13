@@ -90,6 +90,15 @@ $(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-
 	  --vax $(dp)/vaccines-counties.csv \
 	  --jhu $(dp)/jhu-states.csv
 
+# Hospitalizations by state: aggregates hospitalizations by county into
+# states using "fipsstate.csv"
+$(dp)/hhs-hospitalizations-by-state.csv: R/cleanHHS-state.R \
+	$(dp)/hhs-hospitalizations-by-county.csv \
+	$(ds)/fipsstate.csv
+	Rscript $< -o $@ \
+	  --cleanedhhscnt $(dp)/hhs-hospitalizations-by-county.csv \
+	  --mapping $(ds)/fipsstate.csv
+	  
 # Hospitalizations by county: aggregates hospitalizations by facility into
 # counties using "fips-hsa-mapping.csv"
 $(dp)/hhs-hospitalizations-by-county.csv: R/cleanHHS-county.R \
@@ -125,3 +134,4 @@ $(ds)/fips-hsa-mapping.csv: R/fips-hsa-mapping.R \
 # data.
 $(ds)/hhs-hospitalizations-by-week.csv:
 	wget -O $@ 'https://healthdata.gov/api/views/anag-cw7u/rows.csv?accessType=DOWNLOAD'
+
