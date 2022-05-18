@@ -85,10 +85,80 @@ $(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-
   $(dp)/jhu-states-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr-state.csv \
-   	  --writeMetadata $(dp)/case-death-rr-state-metadata.json \
+    --writeMetadata $(dp)/case-death-rr-state-metadata.json \
 	  --metadata $(dp)/jhu-states-metadata.json \
 	  --vax $(dp)/vaccines-counties.csv \
 	  --jhu $(dp)/jhu-states.csv
+
+# Performs the API call to cdc-data to fetch latest boosters by county data.
+$(ds)/cdc-vax-boost-county.csv:
+	wget -O $@ 'https://data.cdc.gov/api/views/8xkx-amqh/rows.csv?accessType=DOWNLOAD'
+
+# Performs the API call to cdc-data to fetch latest boosters by state data.
+$(ds)/cdc-vax-boost-state.csv:
+	wget -O $@ 'https://data.cdc.gov/api/views/unsk-b7fc/rows.csv?accessType=DOWNLOAD'
+	
+# Make the vax-boost-state data
+$(dp)/vax-boost-state.csv: R/vax-boost-state.R \
+	$(ds)/cdc-vax-boost-state.csv 
+	Rscript $< -o $@ \
+	  --cdcpath $(ds)/cdc-vax-boost-state.csv
+	  
+# Make the vax-boost-county data
+$(dp)/vax-boost-county.csv: R/vax-boost-county.R \
+	$(ds)/cdc-vax-boost-county.csv \
+	$(dp)/vax-boost-state.csv \
+	$(ds)/fipspop.csv 
+	Rscript $< -o $@ \
+	  --cdcpath $(ds)/cdc-vax-boost-county.csv \
+	  --statepath $(dp)/vax-boost-state.csv \
+	  --fipspoppath $(ds)/fipspop.csv
+	  
+$(dp)/case-death-rr-boost.csv $(dp)/case-death-rr-boost-metadata.json &: R/join-JHU-vaccines-boost.R \
+  $(dp)/case-death-rr.csv \
+  $(dp)/vax-boost-county.csv \
+  $(dp)/case-death-rr-metadata.json
+	@mkdir -p data-products
+	Rscript $< -o $(dp)/case-death-rr-boost.csv \
+	  --writeMetadata $(dp)/case-death-rr-boost-metadata.json \
+	  --metadata $(dp)/case-death-rr-metadata.json \
+	  --boost $(dp)/vax-boost-county.csv \
+	  --jhuVax $(dp)/case-death-rr.csv
+
+$(dp)/case-death-rr-boost-state.csv $(dp)/case-death-rr-boost-state-metadata.json &: R/join-state-JHU-vaccines-boost.R \
+  $(dp)/case-death-rr-state.csv \
+  $(dp)/vax-boost-state.csv \
+  $(dp)/case-death-rr-state-metadata.json
+	@mkdir -p data-products
+	Rscript $< -o $(dp)/case-death-rr-boost-state.csv \
+   	--writeMetadata $(dp)/case-death-rr-boost-state-metadata.json \
+	  --metadata $(dp)/case-death-rr-state-metadata.json \
+	  --jhuVax $(dp)/case-death-rr-state.csv \
+	  --boost $(dp)/vax-boost-state.csv
+	  
+	  # Create fully merged data files:
+	  # JHU + vaccine RR + boosters CDC + hospitalizations (weekly format)
+$(dp)/case-death-rr-boost-hosp.csv $(dp)/case-death-rr-boost-hosp-metadata.json &: R/join-case-hosp-data.R \
+  $(dp)/case-death-rr-boost.csv \
+  $(dp)/hhs-hospitalizations-by-county.csv \
+  $(dp)/case-death-rr-boost-metadata.json
+	@mkdir -p data-products
+	Rscript $< -o $(dp)/case-death-rr-boost.csv \
+	  --writeMetadata $(dp)/case-death-rr-boost-hosp-metadata.json \
+	  --metadata $(dp)/case-death-rr-boost-metadata.json \
+	  --hosp $(dp)/hhs-hospitalizations-by-county.csv \
+	  --casedeath $(dp)/case-death-rr-boost.csv
+
+$(dp)/case-death-rr-boost-hosp-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-state-case-hosp-data.R \
+  $(dp)/case-death-rr-boost-state.csv \
+  $(dp)/hhs-hospitalizations-by-state.csv \
+  $(dp)/case-death-rr-boost-state-metadata.json
+	@mkdir -p data-products
+	Rscript $< -o $(dp)/case-death-rr-boost-hosp-state.csv \
+   	--writeMetadata $(dp)/case-death-rr-boost-hosp-state-metadata.json \
+	  --metadata $(dp)/case-death-rr-boost-state-metadata.json \
+	  --hosp $(dp)/hhs-hospitalizations-by-state.csv \
+	  --casedeath $(dp)/case-death-rr-boost-state.csv
 
 # Hospitalizations by state: aggregates hospitalizations by county into
 # states using "fipsstate.csv"
@@ -96,7 +166,7 @@ $(dp)/hhs-hospitalizations-by-state.csv: R/cleanHHS-state.R \
 	$(dp)/hhs-hospitalizations-by-county.csv \
 	$(ds)/fipsstate.csv
 	Rscript $< -o $@ \
-	  --cleanedhhscnt $(dp)/hhs-hospitalizations-by-county.csv \
+	  --cleanedhhs $(dp)/hhs-hospitalizations-by-county.csv \
 	  --mapping $(ds)/fipsstate.csv
 	  
 # Hospitalizations by county: aggregates hospitalizations by facility into
@@ -134,4 +204,6 @@ $(ds)/fips-hsa-mapping.csv: R/fips-hsa-mapping.R \
 # data.
 $(ds)/hhs-hospitalizations-by-week.csv:
 	wget -O $@ 'https://healthdata.gov/api/views/anag-cw7u/rows.csv?accessType=DOWNLOAD'
+
+
 
