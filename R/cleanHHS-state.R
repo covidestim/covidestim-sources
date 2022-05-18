@@ -114,11 +114,11 @@ cleanedhhs <- read_csv(args$cleanedhhs, col_types = cleanedhhsSpec)
 pd()
 
 ps("Reading FIPS-HSA mapping file {.file {args$mapping}}")
-fipsMapping <- read_csv(args$mapping, col_types = 'cn')
+fipsState <- read_csv(args$mapping, col_types = 'cc')
 pd()
 
 ps("Summarizing admissions by state")
-admissionsByState <- cleanedhhs %>% left_join(fipsMapping, by = "fips") %>%
+admissionsByState <- cleanedhhs %>% left_join(fipsState, by = "fips") %>%
   drop_na(state) %>%
   group_by(state, weekstart) %>%
   summarize(across(all_of(valueAndBoundsVariables), sum), .groups = 'drop')
