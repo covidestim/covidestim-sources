@@ -120,16 +120,10 @@ hosp %>%
               ## so that estimates can still be updated daily.
               mutate(cases = c(rep(0,6), zoo::rollsum(cases, 7)),
                      deaths = c(rep(0,6), zoo::rollsum(deaths, 7)),
-                     boost_n = c(rep(0,6), zoo::rollsum(boost_n, 7))
+                     boost = c(rep(0,6), zoo::rollsum(boost_n, 7))
               ) %>%
               ungroup(), 
-            by = c("state", "date")) %>%
-  group_by(state) %>%
-  arrange(date) %>%
-  mutate(
-    #create a rolling average for the hospitalizations data
-    hospi_roll = c(NA, round(zoo::rollmean(hospi, 3), NA))
-  ) -> joined
+            by = c("state", "date")) -> joined
 
 pd()
 
@@ -138,11 +132,18 @@ cli_h1("Processing")
 ps("Replacing NA hospitalizations data with {.code 0}")
 replaced <- replace_na(joined, list(hospi = 0, hospi_roll = 0))
 pd()
+ps("Selecting variables")
+final <- replaced %>%
+  select(state, date,
+         cases, deaths,
+         hospi,
+         boost)
+pd()
 
 cli_h1("Writing")
 
 ps("Writing output to {.file {args$o}}")
-write_csv(replaced, args$o)
+write_csv(final, args$o)
 pd()
 
 if (!is.null(args$writeMetadata)) {
