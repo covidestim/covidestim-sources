@@ -2,3 +2,5 @@
 data-products/*
 data-sources/hhs-hospitalizations-by-week.csv
 data-sources/fips-hsa-mapping.csv
+data-sources/cdc-vax-boost-county.csv
+data-sources/cdc-vax-boost-state.csv
