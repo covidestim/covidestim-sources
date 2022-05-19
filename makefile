@@ -149,7 +149,7 @@ $(dp)/case-death-rr-boost-hosp.csv $(dp)/case-death-rr-boost-hosp-metadata.json 
 	  --hosp $(dp)/hhs-hospitalizations-by-county.csv \
 	  --casedeath $(dp)/case-death-rr-boost.csv
 
-$(dp)/case-death-rr-boost-hosp-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-state-case-hosp-data.R \
+$(dp)/case-death-rr-boost-hosp-state.csv $(dp)/case-death-rr-boost-hosp-state-metadata.json &: R/join-state-case-hosp-data.R \
   $(dp)/case-death-rr-boost-state.csv \
   $(dp)/hhs-hospitalizations-by-state.csv \
   $(dp)/case-death-rr-boost-state-metadata.json
