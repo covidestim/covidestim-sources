@@ -121,7 +121,7 @@ d <- group_by(d, state) %>%
 # Reorder to maintain parity with .csv structure for CTP
 d <- select(d, date, state, cases, deaths, fracpos, volume)
 
-ps("Removing states with fewer than 60 days' observations")
+ps("Removing states with fewer than 60 days observations")
 
 startingStates <- unique(d$state)
 shortStatesStripped <- group_by(d, state) %>% filter(n() > 60) %>% ungroup
