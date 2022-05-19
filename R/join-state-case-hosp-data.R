@@ -130,12 +130,13 @@ pd()
 cli_h1("Processing")
 
 ps("Replacing NA hospitalizations data with {.code 0}")
-replaced <- replace_na(joined, list(hospi = 0, hospi_roll = 0))
+replaced <- replace_na(joined, list(hospi = 0))
 pd()
 ps("Selecting variables")
 final <- replaced %>%
   select(state, date,
          cases, deaths,
+         RR,
          hospi,
          boost)
 pd()

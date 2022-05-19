@@ -143,7 +143,7 @@ $(dp)/case-death-rr-boost-hosp.csv $(dp)/case-death-rr-boost-hosp-metadata.json 
   $(dp)/hhs-hospitalizations-by-county.csv \
   $(dp)/case-death-rr-boost-metadata.json
 	@mkdir -p data-products
-	Rscript $< -o $(dp)/case-death-rr-boost.csv \
+	Rscript $< -o $(dp)/case-death-rr-boost-hosp.csv \
 	  --writeMetadata $(dp)/case-death-rr-boost-hosp-metadata.json \
 	  --metadata $(dp)/case-death-rr-boost-metadata.json \
 	  --hosp $(dp)/hhs-hospitalizations-by-county.csv \
