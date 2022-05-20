@@ -98,7 +98,10 @@ ps("Loading hospitalizations data from {.file {args$hosp}}")
 hosp <- read_csv(
   args$hosp,
   col_types = cleanedhhsSpec
-)
+) %>%
+  transmute(date = weekstart + 6,
+            state = state,
+            hospi = admissionsAdultsConfirmed_min)
 pd()
 
 ps("Loading metadata from {.file {args$metadata}}")
@@ -107,9 +110,7 @@ pd()
 
 ps("Joining JHU-vax-boost and hospitalizations data")
 hosp %>% 
-  rename(date = weekstart,
-         hospi = admissionsAdultsConfirmed_min) %>%
-  left_join(case_death %>%
+  inner_join(case_death %>%
               group_by(state) %>%
               arrange(date) %>%
               ## Compute the weekly rolling sum of cases, deaths, boosters;
@@ -132,6 +133,7 @@ cli_h1("Processing")
 ps("Replacing NA hospitalizations data with {.code 0}")
 replaced <- replace_na(joined, list(hospi = 0))
 pd()
+
 ps("Selecting variables")
 final <- replaced %>%
   select(state, date,
