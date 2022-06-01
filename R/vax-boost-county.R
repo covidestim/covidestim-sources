@@ -30,7 +30,6 @@ Options:
 ps <- cli_process_start
 pd <- cli_process_done
 
-print("test")
 args <- docopt(doc, version = 'vax-boost-county 0.1')
 output_path   <- args$o
 cdcpath <- args$cdcpath
@@ -51,7 +50,7 @@ cols_only(
   ) -> colSpec
 
 cols_only(
-  date = col_date(format = "%m/%d/%Y"),
+  date = col_date(),
   state = col_character(),
   first_dose_cum = col_double(),
   first_dose_cum_pct = col_double(),
@@ -92,29 +91,57 @@ cdc %>%
   boost_cum_pct = Booster_Doses_Vax_Pct) -> cdcClean
 pd()
 
-ps("Generate dates for the county data until October 1, 2021")
+ps("Generate dates for the county data until October 21, 2021")
+## October 21, because all states report their first cumulative counts on
+## October 20.
 allFipsDates <- cdcClean %>%
   group_by(fips) %>%
-  summarize(date = seq.Date(as.Date("2021-10-20"), as.Date("2021-12-16"), 1),
+  summarize(date = seq.Date(as.Date("2021-10-21"), as.Date("2021-12-16"), 1),
             .groups = 'drop') %>%
   ungroup()
 pd()
 
-ps("Calculate the county/state fraction for December 16, 2021")
+ps("Transform data to be monotonically increasing from last observed date")
+
+## Start at the end of the timeseries; if the previous value is higher,
+## replace with the last value.
+monoInc <- function(x){
+  x.bw <- rev(x)
+  x.bw[which(is.na(x.bw))] <- 0
+  for(i in 2:length(x)){
+    if(x.bw[i] > x.bw[i-1]) x.bw[i] <- x.bw[i-1]
+  }
+  rev(x.bw)
+}
+
 cdcClean %>% 
+  group_by(fips) %>%
+  arrange(date) %>%
+  mutate(boost_cum_pct = monoInc(boost_cum_pct)) %>%
+  ungroup() -> cdcClean2
+
+pd()
+
+ps("Calculate the county/state fraction for first available date after December 16, 2021")
+cdcClean2 %>% 
   right_join(stt_vax %>% 
                transmute(date = date,
                          state = state,
                          boost.stt = boost_cum_pct
                           ), by = c("state", "date")) %>%
+  filter(date >= as.Date("2021-12-16")) %>%
+  mutate(rr = boost_cum_pct / boost.stt) %>%
+  group_by(fips) %>%
+  arrange(date) %>%
+  mutate(rr_first = first(na.omit(rr))) %>%
+  ungroup() %>%
   filter(date == as.Date("2021-12-16")) %>%
   mutate(rr = if_else(state == "Hawaii", # Hawaii counties are all missing; impute with state estimates
                       1,
-                      # if a county reports 0 boosters on Dec 16; impute with state estimates
-                      if_else(boost_cum_pct == 0 | is.na(boost_cum_pct), 
+                      # if there is no data on a date; impute the ratio with the state estimates
+                      if_else(is.na(rr_first), 
                               1,
-                              # calculate ratio of county
-                              boost_cum_pct / boost.stt
+                              rr_first
                               )
                       )
          ) -> fipsStateFrac
@@ -132,8 +159,9 @@ cum_To_daily <- function(x) {
   return(out)
 }
 
-cdcClean %>% 
-  full_join(allFipsDates, by = c("fips", "date")) %>%
+cdcClean2 %>% 
+  drop_na(state) %>%
+  full_join(allFipsDates, by = c("fips", "date"))  %>%
   left_join(stt_vax %>% 
               transmute(date = date,
                         state = state,
@@ -141,7 +169,7 @@ cdcClean %>%
               ), by = c("state", "date")) %>%
   left_join(fipsStateFrac %>% select(fips, rr), by = "fips") %>%
   left_join(fipspop, by = "fips") %>%
-  mutate(boost_cum_pct_imp = if_else(is.na(boost_cum_pct),
+  mutate(boost_cum_pct_imp = if_else(date < as.Date("2021-12-16"),
                                      boost.stt * rr,
                                      if_else(boost_cum_pct == 0,
                                              boost.stt,
@@ -149,6 +177,7 @@ cdcClean %>%
                                      ),
          boost_cum_imp = round(boost_cum_pct_imp / 100 * pop)
          ) %>%
+  filter(fips != "UNK") %>%
   group_by(fips) %>%
   arrange(date) %>%
   mutate(
@@ -156,8 +185,8 @@ cdcClean %>%
     full_vax_n = cum_To_daily(full_vax_cum),
     boost_n = cum_To_daily(boost_cum_imp)
   ) %>%
-  ungroup() %>%
-  drop_na() -> final
+  ungroup() -> final
+
 pd()
 
 ps("Writing cleaned data to {.file {output_path}}")
