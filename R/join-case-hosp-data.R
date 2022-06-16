@@ -135,12 +135,13 @@ ps("Replacing NA hospitalizations data with {.code 0}")
 replaced <- replace_na(joined, list(hospi = 0))
 pd()
 
-ps("Selecting variables")
+ps("Selecting variables and data after December 1 2021")
 final <- replaced %>%
   select(fips, date,
          cases, deaths,
          hospi, RR,
-         boost)
+         boost) %>% 
+  filter(date > as.Date("2021-12-01"))
 pd()
 
 cli_h1("Writing")
