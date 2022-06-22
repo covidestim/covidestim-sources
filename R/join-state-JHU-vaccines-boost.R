@@ -48,9 +48,11 @@ boost <- read_csv(
   col_types = cols(
     date = col_date(),
     state = col_character(),
-    boost_n = col_number()
+    boost_n = col_number(),
+    first_dose_n = col_number()
   )
-)
+) %>%
+  mutate(boost_n = boost_n + first_dose_n)
 pd()
 
 ps("Loading metadata from {.file {args$metadata}}")
