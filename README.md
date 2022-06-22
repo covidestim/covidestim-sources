@@ -41,6 +41,7 @@ Then, make sure you have the neccessary R packages installed. These are:
 - `cli`
 - `docopt`
 - `sf`
+- `vaccineAdjust`: Not on CRAN. To install: `devtools::install_github("covidestim/vaccineAdjust")`
 
 You can install them in the R console: `install.packages(c('tidyverse', 'cli', 'docopt', 'sf'))`.
 
