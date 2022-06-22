@@ -45,7 +45,7 @@ Then, make sure you have the neccessary R packages installed. These are:
 
 You can install them in the R console: `install.packages(c('tidyverse', 'cli', 'docopt', 'sf'))`.
 
-Finally, attempt to Make the most important targets. Note, you will need GNU Make
+Finally, attempt to Make the most important targets. Note, you will need GNU Make >=4.3
 installed, which does not ship with OS X.
 
 ```bash
