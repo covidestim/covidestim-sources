@@ -135,6 +135,12 @@ ps("Replacing NA hospitalizations data with {.code 0}")
 replaced <- replace_na(joined, list(hospi = 0))
 pd()
 
+
+ps("Filter out counties that don't have initial immunity estimates")
+immNAfips <- c("16033", "31165", "31183", "46102")
+replaced <- filter(replaced, !fips %in% immNAfips)
+pd()
+
 ps("Selecting variables and data after December 1 2021")
 final <- replaced %>%
   select(fips, date,
