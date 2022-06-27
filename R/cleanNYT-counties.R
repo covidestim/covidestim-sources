@@ -56,7 +56,7 @@ d <- arrange(d, fips, date) %>% group_by(fips) %>%
     deaths = pmax(deaths - lag(deaths, default = 0), 0)
   )
 
-ps("Removing counties with fewer than 60 days' observations")
+ps("Removing counties with fewer than 60 days observations")
 
 startingFIPS <- unique(d$fips)
 shortFIPSStripped <- group_by(d, fips) %>% filter(n() >= 60) %>% ungroup
