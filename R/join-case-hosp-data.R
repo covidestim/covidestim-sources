@@ -109,22 +109,62 @@ ps("Loading metadata from {.file {args$metadata}}")
 metadata <- jsonlite::read_json(args$metadata, simplifyVector = T)
 pd()
 
+ps("Matching weekstart dates")
+
+lastCaseDates <- case_death %>%
+  group_by(fips) %>%
+  summarize(lastCaseDate = max(date, na.rm = TRUE))
+
+firstHospDates <- hosp %>%
+  group_by(fips) %>%
+  summarize(firstHospDate = min(date, na.rm = TRUE))
+
+lastHospDates <- hosp %>%
+  group_by(fips) %>%
+  summarize(lastHospDate = max(date, na.rm = TRUE))
+
+fullDates <- full_join(firstHospDates,
+                       lastCaseDates, 
+                       by = "fips") %>%
+  full_join(lastHospDates, by = "fips") %>%
+  drop_na() %>%
+  group_by(fips) %>%
+  summarize(date = seq.Date(firstHospDate,
+                            lastCaseDate,
+                            by = '1 week'),
+            missing_hosp = if_else(date > lastHospDate,
+                               TRUE,
+                               FALSE),
+            .groups = 'drop') 
+
+fullDatesJoin <- fullDates %>% select(date, fips)
+
+pd()
+
 ps("Joining JHU-vax-boost and hospitalizations data")
+
+case_death %>%
+  group_by(fips) %>%
+  arrange(date) %>%
+  ## Compute the weekly rolling sum of cases, deaths, boosters;
+  ## so that no matter the observed hospitalizations date;
+  ## the daily data will always be a weekly aggregate.
+  ## Future implementation: make sure that any daily dates past
+  ## the last weekly date; are still added into a 'lastWeek',
+  ## so that estimates can still be updated daily.
+  mutate(cases = c(rep(0,6), zoo::rollsum(cases, 7)),
+         deaths = c(rep(0,6), zoo::rollsum(deaths, 7)),
+         boost = c(rep(0,6), zoo::rollsum(boost_n, 7))
+  ) %>%
+  ungroup() %>%
+  ## Filter the fullDates in the case_death data
+  right_join(fullDatesJoin,
+             by = c("fips", "date")) -> case_death_join
+
 hosp %>% 
-  inner_join(case_death %>%
-              group_by(fips) %>%
-              arrange(date) %>%
-              ## Compute the weekly rolling sum of cases, deaths, boosters;
-              ## so that no matter the observed hospitalizations date;
-              ## the daily data will always be a weekly aggregate.
-              ## Future implementation: make sure that any daily dates past
-              ## the last weekly date; are still added into a 'lastWeek',
-              ## so that estimates can still be updated daily.
-              mutate(cases = c(rep(0,6), zoo::rollsum(cases, 7)),
-                     deaths = c(rep(0,6), zoo::rollsum(deaths, 7)),
-                     boost = c(rep(0,6), zoo::rollsum(boost_n, 7))
-              ) %>%
-              ungroup(), 
+  right_join(fullDates,
+             by = c("fips", "date")) %>%
+  full_join(case_death_join,
             by = c("fips", "date")) -> joined
 
 pd()
@@ -146,7 +186,8 @@ final <- replaced %>%
   select(fips, date,
          cases, deaths,
          hospi, RR,
-         boost) %>% 
+         boost,
+         missing_hosp) %>% 
   filter(date > as.Date("2021-12-01"))
 pd()
 
@@ -158,7 +199,8 @@ pd()
 
 if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {args$writeMetadata}}")
-  metadata <- filter(metadata, fips %in% unique(replaced$fips))
+  metadata <- filter(metadata, fips %in% unique(replaced$fips)) %>%
+    left_join(lastHospDates, by = "fips")
   jsonlite::write_json(metadata, args$writeMetadata, null = "null")
   pd()
 }
