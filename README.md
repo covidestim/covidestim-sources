@@ -103,11 +103,15 @@ All data sources for the cleaned data are either:
 | Dartmouth Atlas HSA polygons              | Hospitalizations (agg/disagg)                                                                 | `data-sources/hsa-polygons/` ([Git LFS][lfs]), downloaded from [dartmouthatlas.org][da] | *1/yr?*             |
 | Census Block Group polygons               | Hospitalizations (agg/disagg)                                                                 | `data-sources/cbg-polygons/` ([Git LFS][lfs]),  downloaded from [TIGER][tiger]          | *1/yr?*             |
 | Census Block Group popsize                | Hospitalizations (agg/disagg)                                                                 | `data-sources/population_by_cbg.csv/`, extracted from [TIGER][tiger]                    | *1/yr?*             |
+| Vaccination adjustments                   | Vaccination adjustments                                                                       | `data-sources/vaccines-counties.csv`                                                    | needs updating by December 2022 |
+| Data.CDC.gov                              | Booster and vaccination data                                                                  | `data-sources/cdc-vax-boost-state.csv/`, extracted from [cdc-states][cdcstate] and `data-sources/cdc-vax-boost-county.csv` extracted from [cdc-counties][cdcfips] | Daily                           |
 
 [xlspop]: https://www.census.gov/geographies/reference-files/2020/demo/popest/2020-fips.html
 [da]: https://data.dartmouthatlas.org/supplemental/
 [lfs]: https://git-lfs.github.com/
 [tiger]: https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2021&layergroup=Census+Tracts
+[cdcstate]: https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-Jurisdi/unsk-b7fc
+[cdcfips]: https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-County/8xkx-amqh
 
 Some data sources are tracked as git submodules, and other sources, being 
 accessed through APIs, are fetched over HTTP. Large static files are stored
@@ -115,6 +119,11 @@ through [Git LFS][lfs].
 
 The included `makefile` provides a common interface for directing the fetching
 and cleaning of all data sources.
+
+## Data sources
+
+-   **`data-sources/vaccines-counties`** A cached file containing daily RR adjustments to the transition probabilities for each state and county, up until December 31, 2022. This file is rendered by running vaccineAdjust::run(), with data up until December 1, 2021, and freezing the final RR adjustment. After December 1, 2021, vaccination adjustments occur within the covidestim model.
+
 
 ## Targets
 

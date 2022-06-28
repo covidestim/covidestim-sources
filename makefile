@@ -63,31 +63,34 @@ $(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv &: R/cleanNYT-coun
 	  --writeRejects $(dp)/nytimes-counties-rejects.csv \
 	  $(nyt)/us-counties.csv
 
-$(dp)/vaccines-counties.csv:
-	@mkdir -p data-products/
-	Rscript -e "readr::write_csv(vaccineAdjust::run(), '$@')" || \
-	  gunzip < data-sources/vaccines-backup.csv.gz > $@
+# Legacy to make (dp)/vaccines-counties.csv
+# Now available in (ds)/vaccines-counties.csv
+# Needs updating December 2022
+#$(dp)/vaccines-counties.csv:
+#	@mkdir -p data-products/
+#	Rscript -e "readr::write_csv(vaccineAdjust::run(), '$@')" || \
+#	  gunzip < data-sources/vaccines-backup.csv.gz > $@
 
 $(dp)/case-death-rr.csv $(dp)/case-death-rr-metadata.json &: R/join-JHU-vaccines.R \
-  $(dp)/vaccines-counties.csv \
+  $(ds)/vaccines-counties.csv \
   $(dp)/jhu-counties.csv \
   $(dp)/jhu-counties-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr.csv \
 	  --writeMetadata $(dp)/case-death-rr-metadata.json \
 	  --metadata $(dp)/jhu-counties-metadata.json \
-	  --vax $(dp)/vaccines-counties.csv \
+	  --vax $(ds)/vaccines-counties.csv \
 	  --jhu $(dp)/jhu-counties.csv
 
 $(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-state-JHU-vaccines.R \
-  $(dp)/vaccines-counties.csv \
+  $(ds)/vaccines-counties.csv \
   $(dp)/jhu-states.csv \
   $(dp)/jhu-states-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr-state.csv \
     --writeMetadata $(dp)/case-death-rr-state-metadata.json \
 	  --metadata $(dp)/jhu-states-metadata.json \
-	  --vax $(dp)/vaccines-counties.csv \
+	  --vax $(ds)/vaccines-counties.csv \
 	  --jhu $(dp)/jhu-states.csv
 
 # Performs the API call to cdc-data to fetch latest boosters by county data.
