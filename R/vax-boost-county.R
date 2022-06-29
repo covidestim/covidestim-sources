@@ -60,6 +60,7 @@ cols_only(
   full_vax_n = col_double(),
   boost_cum = col_double(),
   boost_cum_pct = col_double(),
+  boost_cum_pct_pop = col_double(),
   boost_n = col_double()
 ) -> colSpecState
 
@@ -88,7 +89,13 @@ cdc %>%
   full_vax_cum = Series_Complete_Yes,
   full_vax_cum_pct = Series_Complete_Pop_Pct,
   boost_cum = Booster_Doses,
-  boost_cum_pct = Booster_Doses_Vax_Pct) -> cdcClean
+  boost_cum_pct = Booster_Doses_Vax_Pct) %>%
+  left_join(fipspop, by = "fips") %>%
+  mutate(
+    first_dose_cum_pct_pop = first_dose_cum / pop * 100,
+    full_vax_cum_pct_pop = full_vax_cum / pop * 100,
+    boost_cum_pct_pop = boost_cum / full_vax_cum * 100
+    ) -> cdcClean
 pd()
 
 ps("Generate dates for the county data until October 21, 2021")
@@ -117,7 +124,9 @@ monoInc <- function(x){
 cdcClean %>% 
   group_by(fips) %>%
   arrange(date) %>%
-  mutate(boost_cum_pct = monoInc(boost_cum_pct)) %>%
+  mutate(boost_cum_pct_pop = monoInc(boost_cum_pct_pop),
+         first_dose_cum_pct_pop = monoInc(first_dose_cum_pct_pop),
+         full_vax_cum_pct_pop = monoInc(full_vax_cum_pct_pop)) %>%
   ungroup() -> cdcClean2
 
 pd()
@@ -127,10 +136,10 @@ cdcClean2 %>%
   right_join(stt_vax %>% 
                transmute(date = date,
                          state = state,
-                         boost.stt = boost_cum_pct
+                         boost.stt = boost_cum_pct_pop
                           ), by = c("state", "date")) %>%
   filter(date >= as.Date("2021-12-16")) %>%
-  mutate(rr = boost_cum_pct / boost.stt) %>%
+  mutate(rr = boost_cum_pct_pop / boost.stt) %>%
   group_by(fips) %>%
   arrange(date) %>%
   mutate(rr_first = first(na.omit(rr))) %>%
@@ -168,22 +177,23 @@ cdcClean2 %>%
                         boost.stt = boost_cum_pct
               ), by = c("state", "date")) %>%
   left_join(fipsStateFrac %>% select(fips, rr), by = "fips") %>%
-  left_join(fipspop, by = "fips") %>%
-  mutate(boost_cum_pct_imp = if_else(date < as.Date("2021-12-16"),
+  mutate(boost_cum_pct_pop_imp = if_else(date < as.Date("2021-12-16"),
                                      boost.stt * rr,
-                                     if_else(boost_cum_pct == 0,
+                                     if_else(boost_cum_pct_pop == 0,
                                              boost.stt,
-                                             boost_cum_pct)
+                                             boost_cum_pct_pop)
                                      ),
-         boost_cum_imp = round(boost_cum_pct_imp / 100 * pop)
+         boost_cum_pop = round(boost_cum_pct_pop_imp / 100 * pop),
+         first_dose_cum_pop = round(first_dose_cum_pct_pop / 100 * pop),
+         full_vax_cum_pop = round(full_vax_cum_pct_pop / 100 * pop)
          ) %>%
   filter(fips != "UNK") %>%
   group_by(fips) %>%
   arrange(date) %>%
   mutate(
-    first_dose_n = cum_To_daily(first_dose_cum),
-    full_vax_n = cum_To_daily(full_vax_cum),
-    boost_n = cum_To_daily(boost_cum_imp)
+    first_dose_n = cum_To_daily(first_dose_cum_pop),
+    full_vax_n = cum_To_daily(full_vax_cum_pop),
+    boost_n = cum_To_daily(boost_cum_pop)
   ) %>%
   ungroup() -> final
 

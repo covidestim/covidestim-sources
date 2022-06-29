@@ -103,9 +103,11 @@ $(ds)/cdc-vax-boost-state.csv:
 	
 # Make the vax-boost-state data
 $(dp)/vax-boost-state.csv: R/vax-boost-state.R \
-	$(ds)/cdc-vax-boost-state.csv 
+	$(ds)/cdc-vax-boost-state.csv \
+	$(ds)/statepop.csv
 	Rscript $< -o $@ \
-	  --cdcpath $(ds)/cdc-vax-boost-state.csv
+	  --cdcpath $(ds)/cdc-vax-boost-state.csv \
+	  --sttpop $(ds)/statepop.csv
 	  
 # Make the vax-boost-county data
 $(dp)/vax-boost-county.csv: R/vax-boost-county.R \
@@ -117,24 +119,26 @@ $(dp)/vax-boost-county.csv: R/vax-boost-county.R \
 	  --statepath $(dp)/vax-boost-state.csv \
 	  --fipspoppath $(ds)/fipspop.csv
 	  
-$(dp)/case-death-rr-boost.csv $(dp)/case-death-rr-boost-metadata.json &: R/join-JHU-vaccines-boost.R \
+$(dp)/case-death-rr-boost.csv $(dp)/case-death-rr-boost-metadata.json $(dp)/case-death-rr-boost-rejects.csv &: R/join-JHU-vaccines-boost.R \
   $(dp)/case-death-rr.csv \
   $(dp)/vax-boost-county.csv \
   $(dp)/case-death-rr-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr-boost.csv \
 	  --writeMetadata $(dp)/case-death-rr-boost-metadata.json \
+	  --writeRejects $(dp)/case-death-rr-boost-rejects.csv \
 	  --metadata $(dp)/case-death-rr-metadata.json \
 	  --boost $(dp)/vax-boost-county.csv \
 	  --jhuVax $(dp)/case-death-rr.csv
 
-$(dp)/case-death-rr-boost-state.csv $(dp)/case-death-rr-boost-state-metadata.json &: R/join-state-JHU-vaccines-boost.R \
+$(dp)/case-death-rr-boost-state.csv $(dp)/case-death-rr-boost-state-metadata.json $(dp)/case-death-rr-boost-state-rejects.csv &: R/join-state-JHU-vaccines-boost.R \
   $(dp)/case-death-rr-state.csv \
   $(dp)/vax-boost-state.csv \
   $(dp)/case-death-rr-state-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr-boost-state.csv \
    	--writeMetadata $(dp)/case-death-rr-boost-state-metadata.json \
+   	--writeRejects $(dp)/case-death-rr-boost-state-rejects.csv \
 	  --metadata $(dp)/case-death-rr-state-metadata.json \
 	  --jhuVax $(dp)/case-death-rr-state.csv \
 	  --boost $(dp)/vax-boost-state.csv

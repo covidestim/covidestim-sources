@@ -13,7 +13,7 @@ library(usdata,    warn.conflicts = FALSE)
 'Vax-boost State-data Cleaner
 
 Usage:
-  vax-boost-state.R -o <path> --cdcpath <path>
+  vax-boost-state.R -o <path> --cdcpath <path> --sttpop <path>
   vax-boost-state.R (-h | --help)
   vax-boost-state.R --version
 
@@ -21,6 +21,7 @@ Options:
   -o <path>                 Path to output cleaned data to.
   -h --help                 Show this screen.
   --cdcpath <path>          Path to the cdc data 
+  --sttpop <path>           Path to state population data
   --version                 Show version.
 
 ' -> doc
@@ -31,6 +32,7 @@ args <- docopt(doc, version = 'vax-boost-state 0.1')
 
 output_path   <- args$o
 cdcpath       <- args$cdcpath
+sttpop        <- args$sttpop
 
 cols_only(
   Date = col_date(format = "%m/%d/%Y"),
@@ -45,6 +47,10 @@ cols_only(
 
 ps("Reading cdc vaccinations and booster data by state {.file {cdcpath}}")
 cdc <- read_csv(cdcpath, col_types = colSpec)
+pd()
+
+ps("Reading statepopulation file from {.file {sttpop}}")
+sttpop <- read_csv(sttpop)
 pd()
 
 cum_To_daily <- function(x) {
@@ -67,6 +73,8 @@ cdc %>% transmute(
           boost_cum = Additional_Doses,
           boost_cum_pct = Additional_Doses_Vax_Pct) %>%
   mutate(state = usdata::abbr2state(state)) %>%
+  left_join(sttpop, by = "state") %>%
+  mutate(boost_cum_pct_pop = boost_cum / pop * 100) %>%
   group_by(state) %>%
   arrange(date) %>%
   mutate(
