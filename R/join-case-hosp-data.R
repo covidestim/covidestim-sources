@@ -191,6 +191,10 @@ final <- replaced %>%
   filter(date > as.Date("2021-12-01"))
 pd()
 
+ps("Sorting by fips, date")
+final <- arrange(final, fips, date)
+pd()
+
 cli_h1("Writing")
 
 ps("Writing output to {.file {args$o}}")
