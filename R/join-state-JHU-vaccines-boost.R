@@ -106,8 +106,8 @@ pd()
 if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {args$writeMetadata}}")
   metadata <- filter(metadata, state %in% unique(replaced$state)) %>%
-    filter(!fips %in% illegalFipsBoost) %>%
-    filter(! fips %in% illegalFipsFirstVax)
+    filter(!state %in% illegalStateBoost) %>%
+    filter(! state %in% illegalStateFirstVax)
   jsonlite::write_json(metadata, args$writeMetadata, null = "null")
   pd()
 }
