@@ -99,12 +99,6 @@ ps("Writing output to {.file {args$o}}")
 write_csv(replaced, args$o)
 pd()
 
-if (!is.null(args$writeMetadata)) {
-  ps("Writing metadata to {.file {args$writeMetadata}}")
-  metadata <- filter(metadata, fips %in% unique(replaced$fips))
-  jsonlite::write_json(metadata, args$writeMetadata, null = "null")
-  pd()
-}
 
 rejects <- tibble(
   fips = illegalFipsBoost,
@@ -117,6 +111,16 @@ rejects <- bind_rows(rejects, tibble(
   code = 'ILL_FIRST_VAX',
   reason = "Illegal first vaccination data"
 ))
+
+
+if (!is.null(args$writeMetadata)) {
+  ps("Writing metadata to {.file {args$writeMetadata}}")
+  metadata <- filter(metadata, fips %in% unique(replaced$fips)) %>%
+    filter(!fips %in% illegalFipsBoost) %>%
+    filter(! fips %in% illegalFipsFirstVax)
+  jsonlite::write_json(metadata, args$writeMetadata, null = "null")
+  pd()
+}
 
 if (!identical(args$writeRejects, FALSE)) {
   ps("Writing rejected counties to {.file {rejects_path}}")
