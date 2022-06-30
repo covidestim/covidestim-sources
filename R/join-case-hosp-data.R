@@ -105,6 +105,10 @@ hosp <- read_csv(
   drop_na(date)
 pd()
 
+ps("Filtering rejected counties from hospitalzations data")
+hosp %>% filter(fips %in% unique(case_death$fips)) -> hosp
+pd()
+
 ps("Loading metadata from {.file {args$metadata}}")
 metadata <- jsonlite::read_json(args$metadata, simplifyVector = T)
 pd()

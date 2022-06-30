@@ -103,6 +103,9 @@ hosp <- read_csv(
             state = state,
             hospi = admissionsAdultsConfirmed_min)
 pd()
+ps("Filtering out rejected states from hospitalizations data")
+hosp %>% filter(state %in% unique(case_death$state)) -> hosp
+pd()
 
 ps("Loading metadata from {.file {args$metadata}}")
 metadata <- jsonlite::read_json(args$metadata, simplifyVector = T)
