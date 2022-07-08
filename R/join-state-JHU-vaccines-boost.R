@@ -52,8 +52,8 @@ boost <- read_csv(
     state = col_character(),
     boost_n = col_number(),
     first_dose_n = col_number(),
-    boost_cum_pop = col_number(),
-    first_dose_cum_pop = col_number()
+    boost_cum = col_number(),
+    first_dose_cum = col_number()
     # full_vax_n = col_number()
   )
 ) %>%

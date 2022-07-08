@@ -50,8 +50,8 @@ boost <- read_csv(
     fips = col_character(),
     boost_n = col_number(),
     first_dose_n = col_number(),
-    boost_cum_pop = col_number(),
-    first_dose_cum_pop = col_number()
+    boost_cum = col_number(),
+    first_dose_cum = col_number()
   )
 ) %>%
   mutate(boost_n_old = boost_n,
@@ -81,11 +81,11 @@ ps("Filtering illegal input data (vaccines and booster)")
 ## Exclude any county which reports a cumulative first_dose,
 ## cumulative booster dose, or single date 
 illegalFipsFirstVax <- boost %>% 
-  filter(first_dose_cum_pop > pop) %>% 
+  filter(first_dose_cum > pop) %>% 
   pull(fips) %>% unique
 
 illegalFipsBoost <- boost %>% 
-  filter(boost_cum_pop > pop) %>% 
+  filter(boost_cum > pop) %>% 
   pull(fips) %>% unique
 
 replaced %>% 

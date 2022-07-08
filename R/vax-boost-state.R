@@ -9,6 +9,8 @@ library(stringr,   warn.conflicts = FALSE)
 library(lubridate, warn.conflicts = FALSE)
 library(purrr,     warn.conflicts = FALSE)
 library(usdata,    warn.conflicts = FALSE)
+library(spdep,     warn.conflicts = FALSE)
+library(raster,    warn.conflicts = FALSE)
 
 'Vax-boost State-data Cleaner
 
@@ -74,21 +76,119 @@ cdc %>% transmute(
           boost_cum_pct = Additional_Doses_Vax_Pct) %>%
   mutate(state = usdata::abbr2state(state)) %>%
   left_join(sttpop, by = "state") %>%
-  mutate(boost_cum_pct_pop = boost_cum / pop * 100) %>%
+  ## replace boost_cum_pct by the correct calculation 
+  ## (boosters relative to full population instead of full vax)
+  mutate(boost_cum_pct = boost_cum / pop * 100) %>%
   group_by(state) %>%
   arrange(date) %>%
   mutate(
     first_dose_n = cum_To_daily(first_dose_cum),
     full_vax_n = cum_To_daily(full_vax_cum),
-    boost_n = cum_To_daily(boost_cum)
-    ) %>%
+    boost_n = cum_To_daily(boost_cum)) %>%
   ungroup() %>%
   drop_na() -> final
 pd()
 
+ps("Finding illegal vax/boost data and replacing with neighbors")
+illegalStateFirstVax <- final %>% 
+  filter(first_dose_cum > pop) %>% 
+  pull(state) %>% unique
+
+illegalStateBoost <- final %>% 
+  filter(boost_cum > pop) %>% 
+  pull(state) %>% unique
+
+illStates <- c(illegalStateBoost, illegalStateFirstVax)
+allStates <- unique(final$state)
+goodStates <- allStates[!allStates %in% illStates]
+
+### neighbors of states
+map <- getData("GADM", country = "US", level = 1)
+
+## extract names of states and compute neighbors
+nam <- with(map@data, paste(NAME_1))
+nbs <- poly2nb(map)
+
+## create list, then dataframe with origin state and neighbors colum
+nbs2  <- setNames(sapply(unclass(nbs), function(x) nam[x]), nam)
+nbs3  <- lapply(nbs2, function(x) if(length(x) == 0) NA else x)
+nbsDF <- do.call(rbind, map(nam, 
+                            function(x) data.frame("origin" = x, 
+                                                   "nbs" = nbs3[[x]])))
+
+## pivot final dataframe to long format with columns for 'type' (cum/cum_pct/n)
+## and rows for 'name' of the variable (boost/full_vax/first_dose)
+final %>%
+  pivot_longer(-c(date,state,pop),
+               names_to = c("name", "type"),
+               names_pattern = "(boost|full_vax|first_dose)_(cum_pct|cum|n)") %>%
+  pivot_wider(names_from = type, values_from = value) -> final_pivot
+
+## create national average; only taking states that have no illegal input
+## and rescale the outcome variables relative to population size (note, this is 
+## diffferently done for percentage and count variables)
+final_pivot %>%
+  filter(state %in% goodStates) %>%
+group_by(date, name) %>%
+  summarize(n = sum(n/sum(pop)),
+            cum = sum(cum/sum(pop)),
+            cum_pct = sum(cum_pct * (pop/sum(pop))),
+            .groups = "drop") -> nationalAvg
+
+## create average of (valid) neighbors by origin state
+final_pivot %>% 
+  right_join(nbsDF %>% 
+              filter(!nbs %in% illStates) %>% 
+              filter(! is.na(nbs)), 
+            by = c("state" = "nbs")) %>%
+  group_by(date, origin, name) %>%
+  summarize(n = sum(n/sum(pop)),
+            cum = sum(cum/sum(pop)),
+            cum_pct = sum(cum_pct * (pop/sum(pop))),
+            .groups = "drop") -> nbsAvg
+### this does NOT have all the states in 'state'
+### specifically, states that do not have any valid neighbors
+### are not present in this dataset
+## which will render their n/cum/cum_pct <_nbs> NA as desired
+
+## which states have any valid neighbords?
+hasValidNbs <- nbsDF %>%
+  filter(! nbs %in% illStates) %>%
+  filter(! is.na(nbs)) %>%
+  pull(origin) %>% unique
+
+## append the national and neighbor averaged to the dataframe
+final_pivot %>%
+  left_join(nationalAvg, by = c("date", "name"),
+            suffix = c("", "_nat")) %>%
+  left_join(nbsAvg, by = c("date" = "date", "state" = "origin", "name" = "name"),
+            suffix = c("_obs", "_nbs")) %>%
+  pivot_longer(-c(state,date,pop,name),
+               names_to = c("quantity", "original"),
+               names_pattern = "(cum|cum_pct|n)_(obs|nbs|nat)") %>%
+  pivot_wider(names_from = original,
+              values_from = value) %>%
+  ## replace the observed values when there are illegal data; 
+  ## replace with national average if there are no valid neighbords
+  ## and replace with neighbor average if there are valid neighbors
+  ## note that the calculation is different for count variables and percentages
+  ## in all other cases, replace with the original value.
+  mutate(obs = case_when(state %in% illStates & ! state %in% hasValidNbs & quantity == "cum_pct" ~ nat,
+                       state %in% illStates & state %in% hasValidNbs & quantity == "cum_pct" ~ nbs,
+                       state %in% illStates & ! state %in% hasValidNbs & quantity != "cum_pct" ~ nat*pop,
+                       state %in% illStates & state %in% hasValidNbs & quantity != "cum_pct" ~ nbs*pop,
+                       state %in% goodStates ~ obs)) %>%
+  dplyr::select(state,date,pop,name,quantity,obs) %>%
+  pivot_wider(names_from = c(name, quantity),
+              values_from = obs)-> final_replaced
+
+
+pd()
+
+
 
 ps("Writing cleaned data to {.file {output_path}}")
-write_csv(final, output_path)
+write_csv(final_replaced, output_path)
 pd()
 
 

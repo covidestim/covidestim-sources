@@ -60,8 +60,8 @@ cols_only(
   full_vax_n = col_double(),
   boost_cum = col_double(),
   boost_cum_pct = col_double(),
-  boost_cum_pct_pop = col_double(),
-  boost_n = col_double()
+  boost_n = col_double(),
+  pop = col_double()
 ) -> colSpecState
 
 ps("Reading cdc vaccinations and booster data by county {.file {args$cdcpath}}")
@@ -69,7 +69,14 @@ cdc <- read_csv(cdcpath, col_types = colSpec)
 pd()
 
 ps("Reading cleaned vaccinations and booster data by state {.file {args$statepath}}")
-stt_vax <- read_csv(statepath, col_types = colSpecState) 
+stt_vax_full <- read_csv(statepath, col_types = colSpecState)
+
+stt_vax <- stt_vax_full %>% 
+  transmute(date = date,
+            state = state,
+            boost.stt = boost_cum_pct
+  )
+  
 pd()
 
 ps("Reading fipspop mapping {.file {args$fipspoppath}}")
@@ -92,9 +99,9 @@ cdc %>%
   boost_cum_pct = Booster_Doses_Vax_Pct) %>%
   left_join(fipspop, by = "fips") %>%
   mutate(
-    first_dose_cum_pct_pop = first_dose_cum / pop * 100,
-    full_vax_cum_pct_pop = full_vax_cum / pop * 100,
-    boost_cum_pct_pop = boost_cum / full_vax_cum * 100
+    first_dose_cum_pct = first_dose_cum / pop * 100,
+    full_vax_cum_pct = full_vax_cum / pop * 100,
+    boost_cum_pct = boost_cum / full_vax_cum * 100
     ) -> cdcClean
 pd()
 
@@ -124,22 +131,18 @@ monoInc <- function(x){
 cdcClean %>% 
   group_by(fips) %>%
   arrange(date) %>%
-  mutate(boost_cum_pct_pop = monoInc(boost_cum_pct_pop),
-         first_dose_cum_pct_pop = monoInc(first_dose_cum_pct_pop),
-         full_vax_cum_pct_pop = monoInc(full_vax_cum_pct_pop)) %>%
+  mutate(boost_cum_pct = monoInc(boost_cum_pct),
+         first_dose_cum_pct = monoInc(first_dose_cum_pct),
+         full_vax_cum_pct = monoInc(full_vax_cum_pct)) %>%
   ungroup() -> cdcClean2
 
 pd()
 
 ps("Calculate the county/state fraction for first available date after December 16, 2021")
 cdcClean2 %>% 
-  right_join(stt_vax %>% 
-               transmute(date = date,
-                         state = state,
-                         boost.stt = boost_cum_pct_pop
-                          ), by = c("state", "date")) %>%
+  right_join(stt_vax, by = c("state", "date")) %>%
   filter(date >= as.Date("2021-12-16")) %>%
-  mutate(rr = boost_cum_pct_pop / boost.stt) %>%
+  mutate(rr = boost_cum_pct / boost.stt) %>%
   group_by(fips) %>%
   arrange(date) %>%
   mutate(rr_first = first(na.omit(rr))) %>%
@@ -171,34 +174,81 @@ cum_To_daily <- function(x) {
 cdcClean2 %>% 
   drop_na(state) %>%
   full_join(allFipsDates, by = c("fips", "date"))  %>%
-  left_join(stt_vax %>% 
-              transmute(date = date,
-                        state = state,
-                        boost.stt = boost_cum_pct
-              ), by = c("state", "date")) %>%
+  left_join(stt_vax, by = c("state", "date")) %>%
   left_join(fipsStateFrac %>% select(fips, rr), by = "fips") %>%
-  mutate(boost_cum_pct_pop_imp = if_else(date < as.Date("2021-12-16"),
+  mutate(boost_cum_pct_imp = if_else(date < as.Date("2021-12-16"),
                                      boost.stt * rr,
-                                     if_else(boost_cum_pct_pop == 0,
+                                     if_else(boost_cum_pct == 0,
                                              boost.stt,
-                                             boost_cum_pct_pop)
+                                             boost_cum_pct)
                                      ),
-         boost_cum_pop = round(boost_cum_pct_pop_imp / 100 * pop),
-         first_dose_cum_pop = round(first_dose_cum_pct_pop / 100 * pop),
-         full_vax_cum_pop = round(full_vax_cum_pct_pop / 100 * pop)
+         boost_cum = round(boost_cum_pct_imp / 100 * pop),
+         first_dose_cum = round(first_dose_cum_pct / 100 * pop),
+         full_vax_cum = round(full_vax_cum_pct / 100 * pop)
          ) %>%
   filter(fips != "UNK") %>%
   group_by(fips) %>%
   arrange(date) %>%
   mutate(
-    first_dose_n = cum_To_daily(first_dose_cum_pop),
-    full_vax_n = cum_To_daily(full_vax_cum_pop),
-    boost_n = cum_To_daily(boost_cum_pop)
+    first_dose_n = cum_To_daily(first_dose_cum),
+    full_vax_n = cum_To_daily(full_vax_cum),
+    boost_n = cum_To_daily(boost_cum)
   ) %>%
+  select(-c(boost_cum_pct_imp, completeness_pct,boost.stt,rr))%>%
   ungroup() -> final
 
 pd()
 
+ps("Replacing illegal input data with state averages")
+## Exclude any county which reports a cumulative first_dose,
+## cumulative booster dose, or single date 
+illegalFipsFirstVax <- final %>% 
+  filter(first_dose_cum > pop) %>% 
+  pull(fips) %>% unique
+
+illegalFipsBoost <- final %>% 
+  filter(boost_cum > pop) %>% 
+  pull(fips) %>% unique
+
+illFips <- c(illegalFipsFirstVax, illegalFipsBoost)
+
+final %>%
+  pivot_longer(-c(date,fips,pop,state),
+               names_to = c("name", "type"),
+               names_pattern = "(boost|full_vax|first_dose)_(cum_pct|cum|n)") %>%
+  pivot_wider(names_from = type, values_from = value) -> final_pivot
+
+stt_vax_full %>% 
+  pivot_longer(-c(date,state,pop),
+               names_to = c("name", "type"),
+               names_pattern = "(boost|full_vax|first_dose)_(cum_pct|cum|n)") %>%
+  pivot_wider(names_from = type, values_from = value) %>%
+  mutate(n = n/pop,
+            cum = cum/pop,
+            cum_pct = cum_pct) %>%
+  select(-pop) -> stateAvg
+
+final_pivot %>% 
+  right_join(stateAvg, by = c("date", "state", "name"),
+             suffix = c("_cnt", "_stt")) %>%
+  pivot_longer(-c(state,fips,date,pop,name),
+               names_to = c("quantity", "original"),
+               names_pattern = "(cum|cum_pct|n)_(cnt|stt)") %>%
+  pivot_wider(names_from = original,
+              values_from = value) %>%
+  mutate(cnt = case_when(fips %in% illFips & quantity == "cum_pct" ~ stt,
+                         fips %in% illFips & quantity != "cum_pct" ~ stt*pop,
+                         !fips %in% illFips ~ cnt)) %>%
+  dplyr::select(fips,date,pop,name,quantity,cnt) %>%
+  drop_na(fips) %>%
+  pivot_wider(names_from = c(name, quantity),
+              values_from = cnt)-> final_replaced
+
+
+pd()
+
+
+
 ps("Writing cleaned data to {.file {output_path}}")
-write_csv(final, output_path)
+write_csv(final_replaced, output_path)
 pd()
