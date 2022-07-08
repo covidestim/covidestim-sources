@@ -212,12 +212,15 @@ illegalFipsBoost <- final %>%
 
 illFips <- c(illegalFipsFirstVax, illegalFipsBoost)
 
+## pivoting the final data frame, to generate colums for 'type' (cum/cum_pct/n)
+## and for 'name' (boost/full_vax/first_vax)
 final %>%
   pivot_longer(-c(date,fips,pop,state),
                names_to = c("name", "type"),
                names_pattern = "(boost|full_vax|first_dose)_(cum_pct|cum|n)") %>%
   pivot_wider(names_from = type, values_from = value) -> final_pivot
 
+## pivoting the state data and scaling the target variables
 stt_vax_full %>% 
   pivot_longer(-c(date,state,pop),
                names_to = c("name", "type"),
@@ -228,6 +231,8 @@ stt_vax_full %>%
             cum_pct = cum_pct) %>%
   select(-pop) -> stateAvg
 
+## joining the county and state data; and replacing the illegal data 
+## with the state data; scaled back to the county's population size
 final_pivot %>% 
   right_join(stateAvg, by = c("date", "state", "name"),
              suffix = c("_cnt", "_stt")) %>%
