@@ -241,8 +241,8 @@ final_pivot %>%
                names_pattern = "(cum|cum_pct|n)_(cnt|stt)") %>%
   pivot_wider(names_from = original,
               values_from = value) %>%
-  mutate(cnt = case_when(fips %in% illFips & quantity == "cum_pct" ~ stt,
-                         fips %in% illFips & quantity != "cum_pct" ~ stt*pop,
+  mutate(cnt = case_when(fips %in% illFips & quantity == "cum_pct" ~ round(stt),
+                         fips %in% illFips & quantity != "cum_pct" ~ round(stt*pop),
                          !fips %in% illFips ~ cnt)) %>%
   dplyr::select(fips,date,pop,name,quantity,cnt) %>%
   drop_na(fips) %>%

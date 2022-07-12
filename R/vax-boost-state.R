@@ -173,10 +173,10 @@ final_pivot %>%
   ## and replace with neighbor average if there are valid neighbors
   ## note that the calculation is different for count variables and percentages
   ## in all other cases, replace with the original value.
-  mutate(obs = case_when(state %in% illStates & ! state %in% hasValidNbs & quantity == "cum_pct" ~ nat,
-                       state %in% illStates & state %in% hasValidNbs & quantity == "cum_pct" ~ nbs,
-                       state %in% illStates & ! state %in% hasValidNbs & quantity != "cum_pct" ~ nat*pop,
-                       state %in% illStates & state %in% hasValidNbs & quantity != "cum_pct" ~ nbs*pop,
+  mutate(obs = case_when(state %in% illStates & ! state %in% hasValidNbs & quantity == "cum_pct" ~ round(nat),
+                       state %in% illStates & state %in% hasValidNbs & quantity == "cum_pct" ~ round(nbs),
+                       state %in% illStates & ! state %in% hasValidNbs & quantity != "cum_pct" ~ round(nat*pop),
+                       state %in% illStates & state %in% hasValidNbs & quantity != "cum_pct" ~round(nbs*pop),
                        state %in% goodStates ~ obs)) %>%
   dplyr::select(state,date,pop,name,quantity,obs) %>%
   pivot_wider(names_from = c(name, quantity),
