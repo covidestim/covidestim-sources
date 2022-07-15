@@ -101,7 +101,7 @@ hosp <- read_csv(
 ) %>%
   transmute(date = weekstart + 6,
             fips = fips,
-            hospi = admissionsAdultsConfirmed_min) %>%
+            hosp = admissionsAdultsConfirmed_min) %>%
   drop_na(date)
 pd()
 
@@ -176,7 +176,7 @@ pd()
 cli_h1("Processing")
 
 ps("Replacing NA hospitalizations data with {.code 0}")
-replaced <- replace_na(joined, list(hospi = 0))
+replaced <- replace_na(joined, list(hosp = 0))
 pd()
 
 
@@ -189,7 +189,7 @@ ps("Selecting variables and data after December 1 2021")
 final <- replaced %>%
   select(fips, date,
          cases, deaths,
-         hospi, RR,
+         hosp, RR,
          boost,
          missing_hosp) %>% 
   filter(date > as.Date("2021-12-01"))
