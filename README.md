@@ -6,7 +6,8 @@ This repository provides a way to clean various input data used for the
 - **Cases**
 - **Deaths**
 - **Vaccination-related risk ratio**
-- **Hospitalizations** (experimental)
+- **Vaccinations and boosters adminstered**
+- **Hospitalizations**
 
 These data are offered at the following geographies:
 
@@ -15,7 +16,8 @@ These data are offered at the following geographies:
 | **Cases**            | ✓            | ✓           |
 | **Deaths**           | ✓            | ✓           |
 | **Risk-ratio**       | ✓            | ✓           |
-| **Hospitalizations** | ✓            | *Soon*      |
+| **Vax-boost**        | ✓            | ✓           |
+| **Hospitalizations** | ✓            | ✓           |
 
 ## Usage and dependencies
 
@@ -42,15 +44,17 @@ Then, make sure you have the neccessary R packages installed. These are:
 - `docopt`
 - `sf`
 - `vaccineAdjust`: Not on CRAN. To install: `devtools::install_github("covidestim/vaccineAdjust")`
+- `raster`
+- `spdep`
 
-You can install them in the R console: `install.packages(c('tidyverse', 'cli', 'docopt', 'sf'))`.
+You can install them in the R console: `install.packages(c('tidyverse', 'cli', 'docopt', 'sf', 'raster', 'spdep'))`.
 
 Finally, attempt to Make the most important targets. Note, you will need GNU Make >=4.3
 installed, which does not ship with OS X.
 
 ```bash
 # Make all primary outcomes
-make -Bj data-products/{case-death-rr.csv,case-death-rr-state.csv,hospitalizations-by-county.csv}
+make -Bj data-products/{case-death-rr-boost-hosp.csv,case-death-rr-boost-hosp-state.csv}
 ```
 
 ## Repository structure
@@ -103,7 +107,7 @@ All data sources for the cleaned data are either:
 | Dartmouth Atlas HSA polygons              | Hospitalizations (agg/disagg)                                                                 | `data-sources/hsa-polygons/` ([Git LFS][lfs]), downloaded from [dartmouthatlas.org][da] | *1/yr?*             |
 | Census Block Group polygons               | Hospitalizations (agg/disagg)                                                                 | `data-sources/cbg-polygons/` ([Git LFS][lfs]),  downloaded from [TIGER][tiger]          | *1/yr?*             |
 | Census Block Group popsize                | Hospitalizations (agg/disagg)                                                                 | `data-sources/population_by_cbg.csv/`, extracted from [TIGER][tiger]                    | *1/yr?*             |
-| Vaccination adjustments                   | Vaccination adjustments                                                                       | `data-sources/vaccines-counties.csv`                                                    | needs updating by December 2022 |
+| Vaccination adjustments                   | Vaccination adjustments                                                                       | `data-sources/vaccines-counties.csv`                                                    | Static w/ data through Dec 2022 |
 | Data.CDC.gov                              | Booster and vaccination data                                                                  | `data-sources/cdc-vax-boost-state.csv/`, extracted from [cdc-states][cdcstate] and `data-sources/cdc-vax-boost-county.csv` extracted from [cdc-counties][cdcfips] | Daily                           |
 
 [xlspop]: https://www.census.gov/geographies/reference-files/2020/demo/popest/2020-fips.html
@@ -127,21 +131,31 @@ and cleaning of all data sources.
 
 ## Targets
 
-- **`make data-products/case-death-rr.csv`**  
-  Clean JHU county-level case/death data. Also writes a file
+- **`make data-products/case-death-rr-boost-hosp.csv`**  
+  Cleaned JHU county-level case/death data. Also writes a file
   `jhu-counties-rejects.csv` for counties which were eliminated during the
-  cleaning process. Any metadata for counties included in the cleaned data will
-  be stored in `case-death-rr-metadata.json`.
+  cleaning process. Joins by location and date with static 
+  vaccine IFR adjustments from `data-sources/vaccines-counties` and the 
+  cleaned CDC `vax-boost-county.csv`.
+  Weekly aggregates are joined with the cleaned `hhs-hospitalizations-by-county.csv`. 
+  Any metadata for counties included in the cleaned data will
+  be stored in `case-death-rr-boost-hosp-metadata.json`. 
 
-- **`make data-products/case-death-rr-state.csv`**  
+- **`make data-products/case-death-rr-boost-hosp-state.csv`**  
   Clean JHU state-level data, splicing in archived Covid Tracking Project data.
-  For details on this, see the `makefile`. Also writes
-  `jhu-states-rejects.csv`. Any metadata for states included in the cleaned
-  data will be stored in `case-death-rr-metadata.json`. 
+  For details on this, see the `makefile`. Also writes `jhu-states-rejects.csv`. 
+  Joins by location and date with static vaccine IFR adjustments from 
+  `data-sources/vaccines-counties` and the cleaned CDC `vax-boost-state.csv`.
+  Weekly aggregates are joined with the cleaned `hhs-hospitalizations-by-state.csv`.
+  Any metadata for counties included in the cleaned
+  data will be stored in `case-death-rr-boost-hosp-state-metadata.json`. 
 
 - **`make data-products/nyt-counties.csv`**  
   Clean NYT county-level case/death data. Writes `nyt-counties-rejects.csv`.
 
+- **`make data-products/hhs-hospitalizations-by-state.csv`**  
+  State-level aggregation of county level hospitalization data. 
+  
 - **`make data-products/hhs-hospitalizations-by-county.csv`**  
   County-level aggregation of facility level hospitalization data. See the next
   section for details on how this is done.
