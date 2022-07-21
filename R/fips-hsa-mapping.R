@@ -101,11 +101,31 @@ cbgsWithHSA <- st_join(cbgpopCentroids, hsapolygons, join = st_nearest_feature) 
   as_tibble
 pd()
 
+ps("Manually adding the D.C. hsa population")
+
+DCpop <- 705749 ## obtained from 
+## data-sources/statepop.csv %>% 
+## filter(state == "District of Columbia") %>%
+## pull(pop)
+DChsa <- 9001 
+### obtained from 
+## read_csv(data-sources/ZipHsaHrr18.csv) %>% 
+## filter(hsastate == "DC") %>%
+## pull(hsanum) %>% unique -> DChsa
+
+cbgsWithHSA_noGeom <- rbind(cbgsWithHSA %>%
+                              select(-geometry), 
+                            data.frame("GEOID" = NA,
+                                       "fips" = "11001",
+                                       "population" = DCpop,
+                                       "hsa" = DChsa))
+pd()
+
 # Q: Which and how many CBGs are left unallocated to an HSA at this point?
 # A: None
 
 ps("Computing per-HSA and per-county population sizes using CBG data")
-cbgsWithHSAAndPop <- group_by(cbgsWithHSA, hsa) %>%
+cbgsWithHSAAndPop <- group_by(cbgsWithHSA_noGeom, hsa) %>%
   mutate(popHSA = sum(population, na.rm = T)) %>%
   group_by(fips) %>%
   mutate(popFIPS = sum(population, na.rm = T)) %>%

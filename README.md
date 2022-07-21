@@ -294,7 +294,6 @@ HSAs to create county-level hospitalizations data, We:
 1. Aggregate facility-level data to the HSA level
 2. Fracture the HSAs using county boundaries
 3. Use CBG population data to divide the outcomes from fractured HSA's into
-   the intersecting counties in a population-proportional manner.
-
+   the intersecting counties in a population-proportional manner. Note that the CBG population is not present for D.C. in our dataset, so we manually add the D.C. population for the corresponding HSA.
 [paper]: https://pubmed.ncbi.nlm.nih.gov/25961661/
 [da]: https://www.dartmouthatlas.org/faq/
