@@ -195,6 +195,17 @@ final <- replaced %>%
   filter(date > as.Date("2021-12-01"))
 pd()
 
+ps("Filtering out counties without hospitalizations data after December 1 2021")
+noHospFips <- final %>%
+  group_by(fips) %>%
+  summarize(noHospData = if_else(all(missing_hosp == TRUE),
+                                 TRUE,
+                                 FALSE)) %>%
+  filter(noHospData == TRUE) %>% pull(fips)
+
+final <- final %>% filter(! fips %in% noHospFips)
+pd()
+
 ps("Sorting by fips, date")
 final <- arrange(final, fips, date)
 pd()
