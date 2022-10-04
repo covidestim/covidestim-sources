@@ -64,8 +64,36 @@ cum_To_daily <- function(x) {
   return(out)
   }
 
+# function to filter both unreasonable dips and peaks 
+# and enforce a monotonic timeseries.
+noPeaks <- function(x){
+  revx <- rev(x)
+  mono_bw <- revx
+  mono_fw <- x
+  
+  #create a monotonic timeseries going forward and backward
+  for(i in 2:length(x)){
+    if(mono_bw[i] > mono_bw[i-1]) {mono_bw[i] <- mono_bw[i-1]}
+    if(mono_fw[i] < mono_fw[i-1]) {mono_fw[i] <- mono_fw[i-1]}
+  }
+  
+  mono_fw_rev <- rev(mono_fw)
+  # moving backwards from last observation, 
+  # selecting the maximum of the monotonic backwards
+  # and monotonic forwards series -- if they are smaller
+  # than the previous observation.
+  for(i in 2:length(x)){
+    revx[i] <- ifelse(mono_bw[i] <= revx[i-1],
+                      ifelse(mono_fw_rev[i] <= revx[i-1],
+                             max(mono_bw[i],mono_fw_rev[i])[1],
+                             mono_bw[i]),
+                      mono_fw_rev[i])
+  }
+  rev(revx)
+}
 ps("Transforming variables names {.file {cdcpath}}")
-cdc %>% transmute(
+cdc %>% 
+  transmute(
           state = Location,
           date = Date,
           first_dose_cum = Administered_Dose1_Recip,
@@ -75,13 +103,25 @@ cdc %>% transmute(
           boost_cum = Additional_Doses,
           boost_cum_pct = Additional_Doses_Vax_Pct) %>%
   mutate(state = usdata::abbr2state(state)) %>%
+  drop_na(state) %>%
   left_join(sttpop, by = "state") %>%
   ## replace boost_cum_pct by the correct calculation 
   ## (boosters relative to full population instead of full vax)
+  ## The cumulative booster percentage reported by the CDC is relative to the 
+  ## fully vaccinated pouplation, whereas we want the percentage of the whole population
+  ## so, replace the percentage variable with manually computed percentage
   mutate(boost_cum_pct = boost_cum / pop * 100) %>%
+  mutate(boost_cum_pct = replace_na(boost_cum_pct, 0 ),
+         boost_cum = replace_na(boost_cum, 0 ) )%>%
   group_by(state) %>%
   arrange(date) %>%
   mutate(
+    # first_dose_cum = noPeaks(first_dose_cum),
+    # first_dose_cum_pct = noPeaks(first_dose_cum_pct),
+    # full_vax_cum = noPeaks(full_vax_cum),
+    # full_vax_cum_pct = noPeaks(full_vax_cum_pct),
+    # boost_cum = noPeaks(boost_cum),
+    # boost_cum_pct = noPeaks(boost_cum_pct),
     first_dose_n = cum_To_daily(first_dose_cum),
     full_vax_n = cum_To_daily(full_vax_cum),
     boost_n = cum_To_daily(boost_cum)) %>%
