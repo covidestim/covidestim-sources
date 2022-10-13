@@ -104,10 +104,12 @@ $(ds)/cdc-vax-boost-state.csv:
 # Make the vax-boost-state data
 $(dp)/vax-boost-state.csv: R/vax-boost-state.R \
 	$(ds)/cdc-vax-boost-state.csv \
-	$(ds)/statepop.csv
+	$(ds)/statepop.csv \
+	$(ds)/state-neighbors.csv
 	Rscript $< -o $@ \
 	  --cdcpath $(ds)/cdc-vax-boost-state.csv \
-	  --sttpop $(ds)/statepop.csv
+	  --sttpop $(ds)/statepop.csv \
+	  --nbs $(ds)/state-neighbors.csv
 	  
 # Make the vax-boost-county data
 $(dp)/vax-boost-county.csv: R/vax-boost-county.R \

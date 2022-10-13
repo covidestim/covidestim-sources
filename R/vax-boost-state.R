@@ -15,7 +15,7 @@ library(raster,    warn.conflicts = FALSE)
 'Vax-boost State-data Cleaner
 
 Usage:
-  vax-boost-state.R -o <path> --cdcpath <path> --sttpop <path>
+  vax-boost-state.R -o <path> --cdcpath <path> --sttpop <path> --nbs <path>
   vax-boost-state.R (-h | --help)
   vax-boost-state.R --version
 
@@ -24,6 +24,7 @@ Options:
   -h --help                 Show this screen.
   --cdcpath <path>          Path to the cdc data 
   --sttpop <path>           Path to state population data
+  --nbs <path>              Path to state neighbors dataframe
   --version                 Show version.
 
 ' -> doc
@@ -35,6 +36,7 @@ args <- docopt(doc, version = 'vax-boost-state 0.1')
 output_path   <- args$o
 cdcpath       <- args$cdcpath
 sttpop        <- args$sttpop
+nbspath       <- args$nbs
 
 cols_only(
   Date = col_date(format = "%m/%d/%Y"),
@@ -53,6 +55,10 @@ pd()
 
 ps("Reading statepopulation file from {.file {sttpop}}")
 sttpop <- read_csv(sttpop)
+pd()
+
+ps("Reading state neightbors file from {.file {nbspath}}")
+nbsDF <- read_csv(nbspath)
 pd()
 
 cum_To_daily <- function(x) {
@@ -142,19 +148,7 @@ illStates <- c(illegalStateBoost, illegalStateFirstVax)
 allStates <- unique(final$state)
 goodStates <- allStates[!allStates %in% illStates]
 
-### neighbors of states
-map <- getData("GADM", country = "US", level = 1)
 
-## extract names of states and compute neighbors
-nam <- with(map@data, paste(NAME_1))
-nbs <- poly2nb(map)
-
-## create list, then dataframe with origin state and neighbors colum
-nbs2  <- setNames(sapply(unclass(nbs), function(x) nam[x]), nam)
-nbs3  <- lapply(nbs2, function(x) if(length(x) == 0) NA else x)
-nbsDF <- do.call(rbind, map(nam, 
-                            function(x) data.frame("origin" = x, 
-                                                   "nbs" = nbs3[[x]])))
 
 ## pivot final dataframe to long format with columns for 'type' (cum/cum_pct/n)
 ## and rows for 'name' of the variable (boost/full_vax/first_dose)
