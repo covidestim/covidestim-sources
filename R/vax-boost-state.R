@@ -122,12 +122,12 @@ cdc %>%
   group_by(state) %>%
   arrange(date) %>%
   mutate(
-    # first_dose_cum = noPeaks(first_dose_cum),
-    # first_dose_cum_pct = noPeaks(first_dose_cum_pct),
-    # full_vax_cum = noPeaks(full_vax_cum),
-    # full_vax_cum_pct = noPeaks(full_vax_cum_pct),
-    # boost_cum = noPeaks(boost_cum),
-    # boost_cum_pct = noPeaks(boost_cum_pct),
+    first_dose_cum = noPeaks(first_dose_cum),
+    first_dose_cum_pct = noPeaks(first_dose_cum_pct),
+    full_vax_cum = noPeaks(full_vax_cum),
+    full_vax_cum_pct = noPeaks(full_vax_cum_pct),
+    boost_cum = noPeaks(boost_cum),
+    boost_cum_pct = noPeaks(boost_cum_pct),
     first_dose_n = cum_To_daily(first_dose_cum),
     full_vax_n = cum_To_daily(full_vax_cum),
     boost_n = cum_To_daily(boost_cum)) %>%
