@@ -46,8 +46,11 @@ cols_only(
   Series_Complete_Yes = col_double(),
   Series_Complete_Pop_Pct = col_double(),
   Additional_Doses = col_double(),
-  Additional_Doses_Vax_Pct = col_double()
-  ) -> colSpec
+  Additional_Doses_Vax_Pct = col_double(),
+  Second_Booster_Janssen = col_double(),
+  Second_Booster_Moderna = col_double(),
+  Second_Booster_Pfizer = col_double(),
+  Second_Booster_Unk_Manuf = col_double()  ) -> colSpec
 
 ps("Reading cdc vaccinations and booster data by state {.file {cdcpath}}")
 cdc <- read_csv(cdcpath, col_types = colSpec)
@@ -107,7 +110,8 @@ cdc %>%
           full_vax_cum = Series_Complete_Yes,
           full_vax_cum_pct = Series_Complete_Pop_Pct,
           boost_cum = Additional_Doses,
-          boost_cum_pct = Additional_Doses_Vax_Pct) %>%
+          boost_cum_pct = Additional_Doses_Vax_Pct,
+          boost2_cum = Second_Booster_Janssen + Second_Booster_Moderna + Second_Booster_Pfizer + Second_Booster_Unk_Manuf) %>%
   mutate(state = usdata::abbr2state(state)) %>%
   drop_na(state) %>%
   left_join(sttpop, by = "state") %>%
@@ -116,9 +120,12 @@ cdc %>%
   ## The cumulative booster percentage reported by the CDC is relative to the 
   ## fully vaccinated pouplation, whereas we want the percentage of the whole population
   ## so, replace the percentage variable with manually computed percentage
-  mutate(boost_cum_pct = boost_cum / pop * 100) %>%
+  mutate(boost_cum_pct = boost_cum / pop * 100,
+         boost2_cum_pct = boost2_cum / pop * 100) %>%
   mutate(boost_cum_pct = replace_na(boost_cum_pct, 0 ),
-         boost_cum = replace_na(boost_cum, 0 ) )%>%
+         boost_cum = replace_na(boost_cum, 0 ),
+         boost2_cum_pct = replace_na(boost2_cum_pct, 0),
+         boost2_cum = replace_na(boost2_cum, 0))%>%
   group_by(state) %>%
   arrange(date) %>%
   mutate(
@@ -128,9 +135,12 @@ cdc %>%
     full_vax_cum_pct = noPeaks(full_vax_cum_pct),
     boost_cum = noPeaks(boost_cum),
     boost_cum_pct = noPeaks(boost_cum_pct),
+    boost2_cum = noPeaks(boost2_cum),
+    boost2_cum_pct = noPeaks(boost2_cum_pct),
     first_dose_n = cum_To_daily(first_dose_cum),
     full_vax_n = cum_To_daily(full_vax_cum),
-    boost_n = cum_To_daily(boost_cum)) %>%
+    boost_n = cum_To_daily(boost_cum),
+    boost2_n = cum_To_daily(boost2_cum)) %>%
   ungroup() %>%
   drop_na() -> final
 pd()
@@ -144,7 +154,11 @@ illegalStateBoost <- final %>%
   filter(boost_cum > pop) %>% 
   pull(state) %>% unique
 
-illStates <- c(illegalStateBoost, illegalStateFirstVax)
+illegalStateBoost2 <- final %>%
+  filter(boost2_cum > boost_cum) %>%
+  pull(state) %>% unique
+
+illStates <- c(illegalStateBoost, illegalStateFirstVax, illegalStateBoost2)
 allStates <- unique(final$state)
 goodStates <- allStates[!allStates %in% illStates]
 
@@ -155,7 +169,7 @@ goodStates <- allStates[!allStates %in% illStates]
 final %>%
   pivot_longer(-c(date,state,pop),
                names_to = c("name", "type"),
-               names_pattern = "(boost|full_vax|first_dose)_(cum_pct|cum|n)") %>%
+               names_pattern = "(boost2|boost|full_vax|first_dose)_(cum_pct|cum|n)") %>%
   pivot_wider(names_from = type, values_from = value) -> final_pivot
 
 ## create national average; only taking states that have no illegal input
