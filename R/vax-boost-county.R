@@ -60,7 +60,10 @@ cols_only(
   full_vax_n = col_double(),
   boost_cum = col_double(),
   boost_cum_pct = col_double(),
+  boost2_cum = col_double(),
+  boost2_cum_pct = col_double(),
   boost_n = col_double(),
+  boost2_n = col_double(),
   pop = col_double()
 ) -> colSpecState
 
@@ -74,7 +77,8 @@ stt_vax_full <- read_csv(statepath, col_types = colSpecState)
 stt_vax <- stt_vax_full %>% 
   transmute(date = date,
             state = state,
-            boost.stt = boost_cum_pct
+            boost.stt = boost_cum_pct,
+            boost2.stt = boost2_cum_pct
   )
   
 pd()
@@ -101,7 +105,8 @@ cdc %>%
   mutate(
     first_dose_cum_pct = first_dose_cum / pop * 100,
     full_vax_cum_pct = full_vax_cum / pop * 100,
-    boost_cum_pct = boost_cum / full_vax_cum * 100
+    # boost_cum_pct_legacy = boost_cum/first_dose_cum * 100,
+    boost_cum_pct = boost_cum / pop * 100
     ) -> cdcClean
 pd()
 
@@ -183,6 +188,10 @@ cdcClean2 %>%
                                              boost_cum_pct)
                                      ),
          boost_cum = round(boost_cum_pct_imp / 100 * pop),
+         boost2_cum_pct = if_else(boost_cum_pct_imp < boost2.stt,
+                                  boost_cum_pct_imp,
+                                  boost2.stt),
+         boost2_cum = round(boost2_cum_pct / 100 * pop),
          first_dose_cum = round(first_dose_cum_pct / 100 * pop),
          full_vax_cum = round(full_vax_cum_pct / 100 * pop)
          ) %>%
@@ -192,9 +201,10 @@ cdcClean2 %>%
   mutate(
     first_dose_n = cum_To_daily(first_dose_cum),
     full_vax_n = cum_To_daily(full_vax_cum),
-    boost_n = cum_To_daily(boost_cum)
+    boost_n = cum_To_daily(boost_cum),
+    boost2_n= cum_To_daily(boost2_cum)
   ) %>%
-  select(-c(boost_cum_pct_imp, completeness_pct,boost.stt,rr))%>%
+  select(-c(boost_cum_pct_imp, completeness_pct,boost.stt,boost2.stt,rr))%>%
   ungroup() -> final
 
 pd()
@@ -217,14 +227,14 @@ illFips <- c(illegalFipsFirstVax, illegalFipsBoost)
 final %>%
   pivot_longer(-c(date,fips,pop,state),
                names_to = c("name", "type"),
-               names_pattern = "(boost|full_vax|first_dose)_(cum_pct|cum|n)") %>%
+               names_pattern = "(boost2|boost|full_vax|first_dose)_(cum_pct|cum|n)") %>%
   pivot_wider(names_from = type, values_from = value) -> final_pivot
 
 ## pivoting the state data and scaling the target variables
 stt_vax_full %>% 
   pivot_longer(-c(date,state,pop),
                names_to = c("name", "type"),
-               names_pattern = "(boost|full_vax|first_dose)_(cum_pct|cum|n)") %>%
+               names_pattern = "(boost2|boost|full_vax|first_dose)_(cum_pct|cum|n)") %>%
   pivot_wider(names_from = type, values_from = value) %>%
   mutate(n = n/pop,
             cum = cum/pop,
