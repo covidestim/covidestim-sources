@@ -56,10 +56,16 @@ $(dp)/jhu-states.csv $(dp)/jhu-states-rejects.csv $(dp)/jhu-states-metadata.json
 	  --writeMetadata $(dp)/jhu-states-metadata.json \
 	  --reportsPath  $(jhu_reports)
 
-$(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv &: R/cleanNYT-counties.R \
-  $(nyt)/us-counties.csv
+# NYTimes county-level cleaned data
+$(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv $(dp)/nytimes-counties-metadata.json &: R/cleanNYT-counties.R \
+  $(nyt)/us-counties.csv \
+  data-sources/fipspop.csv \
+  data-sources/county-nonreporting.csv
 	@mkdir -p data-products/
 	Rscript $< -o $(dp)/nytimes-counties.csv \
+	  --pop data-sources/fipspop.csv \
+	  --nonreporting data-sources/county-nonreporting.csv \
+	  --writeMetadata $(dp)/nytimes-counties-metadata.json \
 	  --writeRejects $(dp)/nytimes-counties-rejects.csv \
 	  $(nyt)/us-counties.csv
 
@@ -71,16 +77,40 @@ $(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv &: R/cleanNYT-coun
 #	Rscript -e "readr::write_csv(vaccineAdjust::run(), '$@')" || \
 #	  gunzip < data-sources/vaccines-backup.csv.gz > $@
 
+# Combination of JHU and NYTimes county-level data. When both data sources
+# contain a county, JHU is chosen.
+$(dp)/combined-counties.csv $(dp)/combined-counties-rejects.csv $(dp)/combined-counties-metadata.json &: R/combine-JHU-NYT-counties.R \
+  $(dp)/nytimes-counties.csv \
+  $(dp)/nytimes-counties-rejects.csv \
+  $(dp)/nytimes-counties-metadata.json \
+  $(dp)/jhu-counties.csv \
+  $(dp)/jhu-counties-rejects.csv \
+  $(dp)/jhu-counties-metadata.json \
+  $(dp)/jhu-states.csv \
+  $(ds)/fipsstate.csv
+	@mkdir -p data-products/
+	Rscript $< -o $(dp)/combined-counties.csv \
+	  --jhu $(dp)/jhu-counties.csv \
+	  --jhuState $(dp)/jhu-states.csv \
+	  --statemap data-sources/fipsstate.csv \
+	  --nyt $(dp)/nytimes-counties.csv \
+	  --metadataJHU $(dp)/jhu-counties-metadata.json \
+	  --metadataNYT $(dp)/nytimes-counties-metadata.json \
+	  --rejectsJHU $(dp)/jhu-counties-rejects.csv \
+	  --rejectsNYT $(dp)/nytimes-counties-rejects.csv \
+	  --writeRejects $(dp)/combined-counties-rejects.csv \
+	  --writeMetadata $(dp)/combined-counties-metadata.json
+
 $(dp)/case-death-rr.csv $(dp)/case-death-rr-metadata.json &: R/join-JHU-vaccines.R \
   $(ds)/vaccines-counties.csv \
-  $(dp)/jhu-counties.csv \
-  $(dp)/jhu-counties-metadata.json
+  $(dp)/combined-counties.csv \
+  $(dp)/combined-counties-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr.csv \
 	  --writeMetadata $(dp)/case-death-rr-metadata.json \
-	  --metadata $(dp)/jhu-counties-metadata.json \
+	  --metadata $(dp)/combined-counties-metadata.json \
 	  --vax $(ds)/vaccines-counties.csv \
-	  --jhu $(dp)/jhu-counties.csv
+	  --jhu $(dp)/combined-counties.csv
 
 $(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-state-JHU-vaccines.R \
   $(ds)/vaccines-counties.csv \
