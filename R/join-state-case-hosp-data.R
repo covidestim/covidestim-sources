@@ -164,7 +164,7 @@ case_death %>%
              by = c("state", "date")) -> case_death_join
 
 hosp %>% 
-  full_join(fullDates,
+  right_join(fullDates,
              by = c("state", "date")) %>%
   full_join(case_death_join,
             by = c("state", "date")) -> joined
