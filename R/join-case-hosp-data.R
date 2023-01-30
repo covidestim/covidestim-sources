@@ -206,6 +206,21 @@ noHospFips <- final %>%
 final <- final %>% filter(! fips %in% noHospFips)
 pd()
 
+# ps("Adjusting lastCaseDate and lastHospDate for Tennessee")
+lastDates <- lastHospDates %>%
+  left_join(lastCaseDates, by = "fips") %>%
+  mutate(lastHospDate = case_when(str_detect(fips, '^47') & lastHospDate == max(lastHospDate) ~ lastHospDate - 7,
+                                  TRUE ~ lastHospDate),
+         lastCaseDate = case_when(str_detect(fips, '^47') & lastCaseDate = max(lastCaseDate) ~ lastCaseDate - 7,
+                                  TRUE ~ lastCaseDate))
+
+# checking what the current last case and last hosp dates are in the data
+# checking what the current last case and last hosp dates are for Tennessee
+# checking that the last data is unreliable (skip?; i.e., force filter for TN)
+# writing the lastCaseDate and lastHospDate
+#
+pd()
+
 ps("Sorting by fips, date")
 final <- arrange(final, fips, date)
 pd()
@@ -219,7 +234,7 @@ pd()
 if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {args$writeMetadata}}")
   metadata <- filter(metadata, fips %in% unique(replaced$fips)) %>%
-    left_join(lastHospDates, by = "fips")
+    left_join(lastDates, by = "fips") %>%
   jsonlite::write_json(metadata, args$writeMetadata, null = "null")
   pd()
 }

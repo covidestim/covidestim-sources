@@ -188,6 +188,24 @@ final <- replaced %>%
   filter(date > as.Date("2021-12-01"))
 pd()
 
+ps("Adjusting lastCaseDate and lastHospDate for Tennessee")
+# maxDate <- max(final$date)
+
+lastDates <- lastCaseDates %>%
+  left_join(lastHospDates, by = "state") %>%
+  mutate(lastCaseDate = case_when(state == "Tennessee" & lastCaseDate == max(lastCaseDate, na.rm = TRUE) ~ lastCaseDate - 7,
+                          TRUE ~ lastCaseDate),
+         lastHospDate = case_when(state == "Tennessee" & lastHospDate == max(lastHospDate, na.rm = TRUE) ~ lastHospDate - 7,
+                          TRUE ~ lastHospDate))
+
+
+# checking what the current last case and last hosp dates are in the data
+# checking what the current last case and last hosp dates are for Tennessee
+# checking that the last data is unreliable (skip?; i.e., force filter for TN)
+# writing the lastCaseDate and lastHospDate
+#
+pd()
+
 ps("Sorting by state, date")
 final <- arrange(final, state, date)
 pd()
@@ -201,7 +219,7 @@ pd()
 if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {args$writeMetadata}}")
   metadata <- filter(metadata, state %in% unique(replaced$state)) %>%
-    left_join(lastHospDates, by = "state")
+    left_join(lastDates, by = "state")
   jsonlite::write_json(metadata, args$writeMetadata, null = "null")
   pd()
 }
