@@ -234,7 +234,7 @@ pd()
 if (!is.null(args$writeMetadata)) {
   ps("Writing metadata to {.file {args$writeMetadata}}")
   metadata <- filter(metadata, fips %in% unique(replaced$fips)) %>%
-    left_join(lastDates, by = "fips") %>%
+    left_join(lastDates, by = "fips") 
   jsonlite::write_json(metadata, args$writeMetadata, null = "null")
   pd()
 }
