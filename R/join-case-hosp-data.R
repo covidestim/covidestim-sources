@@ -211,7 +211,7 @@ lastDates <- lastHospDates %>%
   left_join(lastCaseDates, by = "fips") %>%
   mutate(lastHospDate = case_when(str_detect(fips, '^47') & lastHospDate == max(lastHospDate) ~ lastHospDate - 7,
                                   TRUE ~ lastHospDate),
-         lastCaseDate = case_when(str_detect(fips, '^47') & lastCaseDate = max(lastCaseDate) ~ lastCaseDate - 7,
+         lastCaseDate = case_when(str_detect(fips, '^47') & lastCaseDate == max(lastCaseDate) ~ lastCaseDate - 7,
                                   TRUE ~ lastCaseDate))
 
 # checking what the current last case and last hosp dates are in the data
