@@ -210,8 +210,11 @@ pd()
 lastDates <- lastHospDates %>%
   left_join(lastCaseDates, by = "fips") %>%
   mutate(lastHospDate = case_when(str_detect(fips, '^47') & lastHospDate == max(lastHospDate) ~ lastHospDate - 7,
+                                  # if the lastHospDate, that is, week ENDING in DATE is larger than the maximum date in the data
+                                  # that is, the last complete week, the maxDate should be reduced by one week
+                                  lastHospDate > maxDate ~ maxDate,
                                   TRUE ~ lastHospDate),
-         lastCaseDate = case_when(str_detect(fips, '^47') & lastCaseDate == max(lastCaseDate) ~ lastCaseDate - 7,
+         lastCaseDate = case_when(str_detect(fips, '^47') & lastCaseDate == max(lastCaseDate) ~ lastCaseDate - 7
                                   TRUE ~ lastCaseDate))
 
 # checking what the current last case and last hosp dates are in the data
