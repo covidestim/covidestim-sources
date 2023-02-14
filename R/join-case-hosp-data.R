@@ -206,7 +206,10 @@ noHospFips <- final %>%
 final <- final %>% filter(! fips %in% noHospFips)
 pd()
 
-# ps("Adjusting lastCaseDate and lastHospDate for Tennessee")
+ps("Adjusting lastCaseDate and lastHospDate for Tennessee")
+
+maxDate <- max(final$date)
+
 lastDates <- lastHospDates %>%
   left_join(lastCaseDates, by = "fips") %>%
   mutate(lastHospDate = case_when(str_detect(fips, '^47') & lastHospDate == max(lastHospDate) ~ lastHospDate - 7,
