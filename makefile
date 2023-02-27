@@ -31,9 +31,9 @@ $(dp)/covidtracking-smoothed-clipped-%.csv: R/cleanCTP.R
 # This recipe produces cleaned county-level data from the JHU repo
 $(dp)/jhu-counties.csv $(dp)/jhu-counties-rejects.csv $(dp)/jhu-counties-metadata.json &: R/cleanJHU-counties.R \
   $(jhu_data)/time_series_covid19_confirmed_US.csv \
-  $(jhu_data)/time_series_covid19_deaths_US.csv \
-  data-sources/fipspop.csv \
-  data-sources/county-nonreporting.csv
+ $(jhu_data)/time_series_covid19_deaths_US.csv \
+ data-sources/fipspop.csv \
+ data-sources/county-nonreporting.csv
 	@mkdir -p data-products/
 	Rscript $< -o $(dp)/jhu-counties.csv \
 	  --pop data-sources/fipspop.csv \
@@ -93,6 +93,27 @@ $(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-
 	  --vax $(ds)/vaccines-counties.csv \
 	  --jhu $(dp)/jhu-states.csv
 
+# Download the CDC case data for fips and states
+$(ds)/cdc-cases-raw.csv:
+	wget -O $@ 'https://data.cdc.gov/api/views/3nnm-4jni/rows.csv?accessType=DOWNLOAD'
+$(ds)/cdc-cases-state-raw.csv:
+	wget -O $@ 'https://data.cdc.gov/api/views/pwn4-m3yp/rows.csv?accessType=DOWNLOAD'
+	
+
+# Clean the CDC case data for fips and states
+$(dp)/cdc-cases.csv $(dp)/cdc-cases-metadata.json &: R/clean-CDC-counties.R \
+	$(ds)/cdc-cases-raw.csv
+	@mkdir -p data-products
+	Rscript $< -o $(dp)/cdc-cases.csv \
+		--writeMetadata $(dp)/cdc-cases-metadata.json \
+		--cases $(ds)/cdc-cases-raw.csv
+
+$(dp)/cdc-cases-state.csv: R/clean-CDC-states.R \
+	$(ds)/cdc-cases-state-raw.csv
+	@mkdir -p data-products
+	Rscript $< -o $(dp)/cdc-cases-state.csv \
+		--cases $(ds)/cdc-cases-state-raw.csv
+		
 # Performs the API call to cdc-data to fetch latest boosters by county data.
 $(ds)/cdc-vax-boost-county.csv:
 	wget -O $@ 'https://data.cdc.gov/api/views/8xkx-amqh/rows.csv?accessType=DOWNLOAD'
@@ -145,28 +166,34 @@ $(dp)/case-death-rr-boost-state.csv $(dp)/case-death-rr-boost-state-metadata.jso
 	  --jhuVax $(dp)/case-death-rr-state.csv \
 	  --boost $(dp)/vax-boost-state.csv
 	  
-	  # Create fully merged data files:
-	  # JHU + vaccine RR + boosters CDC + hospitalizations (weekly format)
+# Create fully merged data files:
+# JHU + vaccine RR + boosters CDC + hospitalizations (weekly format)
 $(dp)/case-death-rr-boost-hosp.csv $(dp)/case-death-rr-boost-hosp-metadata.json &: R/join-case-hosp-data.R \
   $(dp)/case-death-rr-boost.csv \
   $(dp)/hhs-hospitalizations-by-county.csv \
+  $(dp)/cdc-cases.csv \
+  $(dp)/cdc-cases-metadata.json \
   $(dp)/case-death-rr-boost-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr-boost-hosp.csv \
 	  --writeMetadata $(dp)/case-death-rr-boost-hosp-metadata.json \
 	  --metadata $(dp)/case-death-rr-boost-metadata.json \
 	  --hosp $(dp)/hhs-hospitalizations-by-county.csv \
+	  --cdcCases $(dp)/cdc-cases.csv \
+	  --cdcMetadata $(dp)/cdc-cases-metadata.json \
 	  --casedeath $(dp)/case-death-rr-boost.csv
 
 $(dp)/case-death-rr-boost-hosp-state.csv $(dp)/case-death-rr-boost-hosp-state-metadata.json &: R/join-state-case-hosp-data.R \
   $(dp)/case-death-rr-boost-state.csv \
   $(dp)/hhs-hospitalizations-by-state.csv \
+  $(dp)/cdc-cases-state.csv \
   $(dp)/case-death-rr-boost-state-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr-boost-hosp-state.csv \
    	--writeMetadata $(dp)/case-death-rr-boost-hosp-state-metadata.json \
 	  --metadata $(dp)/case-death-rr-boost-state-metadata.json \
 	  --hosp $(dp)/hhs-hospitalizations-by-state.csv \
+	  --cdcCases $(dp)/cdc-cases-state.csv \
 	  --casedeath $(dp)/case-death-rr-boost-state.csv
 
 # Hospitalizations by state: aggregates hospitalizations by county into

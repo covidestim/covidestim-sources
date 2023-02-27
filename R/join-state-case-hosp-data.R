@@ -8,7 +8,7 @@ ps <- cli_process_start; pd <- cli_process_done
 'Join JHU-vax-boost with Hospitalizations data for states
 
 Usage:
-  join-state-case-hosp-data.R -o <path> --casedeath <path> --hosp <path> --metadata <path> [--writeMetadata <path>]
+  join-state-case-hosp-data.R -o <path> --casedeath <path> --hosp <path> --cdcCases <path> --metadata <path> [--writeMetadata <path>]
   join-state-case-hosp-data.R (-h | --help)
   join-state-case-hosp-data.R --version
 
@@ -16,6 +16,7 @@ Options:
   -o <path>               Path to output joined data to.
   --casedeath <path>      Path to joined case-death-rr-booster data
   --hosp <path>           Path to cleaned hospitalizations data
+  --cdcCases <path>       Path to cleaned CDC case data
   --metadata <path>       Path to JSON metadata about the cases/deaths/vaccines/boost of each state
   --writeMetadata <path>  Where to save metadata about all case/death/vaccine/boost/hospi data
   -h --help               Show this screen.
@@ -78,6 +79,11 @@ cols(
   # covidRelatedEDVisits_max2 = col_double(),
 ) -> cleanedhhsSpec
 
+
+cols(state = col_character(),
+     date = col_date(),
+     cases = col_number()) -> cdcCols
+
 cli_h1("Loading input data")
 
 ps("Loading JHU case-death-vaccinated-booster data from {.file {args$casedeath}}")
@@ -107,13 +113,25 @@ ps("Filtering out rejected states from hospitalizations data")
 hosp %>% filter(state %in% unique(case_death$state)) -> hosp
 pd()
 
+
+ps("Loading CDC cases data from {.file {args$cdcCases}}")
+cdcCases <- read_csv(
+  args$cdcCases,
+  col_types = cdcCols
+)
+pd()
+
+ps("Filtering rejected counties from cdc cases data")
+cdcCases %>% filter(state %in% unique(case_death$state)) -> cdcCases
+pd()
+
 ps("Loading metadata from {.file {args$metadata}}")
 metadata <- jsonlite::read_json(args$metadata, simplifyVector = T)
 pd()
 
 ps("Matching weekstart dates")
 
-lastCaseDates <- case_death %>%
+lastCaseDates <- cdcCases %>%
   group_by(state) %>%
   summarize(lastCaseDate = max(date, na.rm = TRUE))
 
@@ -143,7 +161,19 @@ fullDatesJoin <- fullDates %>% select(date, state)
 
 pd()
 
+ps("Checking that the date ranges match")
+maxDate <- max(fullDatesJoin$date)
+maxCaseDate <- max(cdcCases$date)
+
+if(maxDate != maxCaseDate){
+  stop("maxCaseDate is not equal to the max HospDate, adjust the CDC date range")
+}
+pd()
+
 ps("Joining JHU-vax-boost and hospitalizations data")
+
+jhu_state <- unique(case_death$state)
+cdc_state <- unique(cdcCases$state)
 
 case_death %>%
   group_by(state) %>%
@@ -163,18 +193,28 @@ case_death %>%
   right_join(fullDatesJoin,
              by = c("state", "date")) -> case_death_join
 
+case_death_join %>% 
+  left_join(cdcCases %>% 
+              rename(cdccase = cases),
+            by = c("date", "state")) %>%
+  mutate(cases = case_when(date > as.Date("2023-02-14") ~ round(cdccase),
+                           TRUE ~ cases)) %>%
+  filter(state %in% jhu_state &
+           state %in% cdc_state) %>%
+  dplyr::select(-cdccase) -> case_death_cdc_join
+
 hosp %>% 
   right_join(fullDates,
              by = c("state", "date")) %>%
-  full_join(case_death_join,
+  full_join(case_death_cdc_join,
             by = c("state", "date")) -> joined
 
 pd()
 
 cli_h1("Processing")
 
-ps("Replacing NA hospitalizations data with {.code 0}")
-replaced <- replace_na(joined, list(hosp = 0))
+ps("Replacing NA hospitalizations and deaths data with {.code 0}")
+replaced <- replace_na(joined, list(hosp = 0, deaths = 0))
 pd()
 
 ps("Selecting variables and data after December 1 2021")
@@ -195,7 +235,7 @@ lastDates <- lastCaseDates %>%
   left_join(lastHospDates, by = "state") %>%
   mutate(lastCaseDate = case_when(state == "Tennessee" & lastCaseDate == max(lastCaseDate, na.rm = TRUE) ~ lastCaseDate - 7,
                           TRUE ~ lastCaseDate),
-         lastHospDate = case_when(state == "Tennessee" & lastHospDate == max(lastHospDate, na.rm = TRUE) ~ lastHospDate - 7,
+         lastHospDate = case_when(state == "Tennessee" & lastHospDate == max(lastCaseDate, na.rm = TRUE) ~ lastHospDate - 7,
                                   # if the lastHospDate, that is, week ENDING in DATE is larger than the maximum date in the data
                                   # that is, the last complete week, the maxDate should be reduced by one week
                           lastHospDate > maxDate ~ maxDate,

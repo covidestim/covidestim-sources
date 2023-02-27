@@ -58,11 +58,16 @@ metadata <- jsonlite::read_json(args$metadata, simplifyVector = T)
 pd()
 
 ps("Joining JHU and vax data")
-left_join(
+jhu_state <- unique(jhu$state)
+rr_state <- unique(vax$FIPS)
+
+right_join(
   jhu,
   select(vax, -StateName),
   by = c("date" = "Date", "state" = "FIPS")
-) -> joined
+) %>%
+  filter(state %in% jhu_state &
+           state %in% rr_state) -> joined
 pd()
         
 ###############
