@@ -1,2 +1,6 @@
 *.shp filter=lfs diff=lfs merge=lfs -text
 data-sources/vaccines-counties.csv filter=lfs diff=lfs merge=lfs -text
+data-sources/jhu-counties.csv filter=lfs diff=lfs merge=lfs -text
+data-sources/jhu-states.csv filter=lfs diff=lfs merge=lfs -text
+data-sources/jhu-states-metadata.json filter=lfs diff=lfs merge=lfs -text
+data-sources/jhu-counties-metadata.json filter=lfs diff=lfs merge=lfs -text

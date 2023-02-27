@@ -73,25 +73,25 @@ $(dp)/nytimes-counties.csv $(dp)/nytimes-counties-rejects.csv &: R/cleanNYT-coun
 
 $(dp)/case-death-rr.csv $(dp)/case-death-rr-metadata.json &: R/join-JHU-vaccines.R \
   $(ds)/vaccines-counties.csv \
-  $(dp)/jhu-counties.csv \
-  $(dp)/jhu-counties-metadata.json
+  $(ds)/jhu-counties.csv \
+  $(ds)/jhu-counties-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr.csv \
 	  --writeMetadata $(dp)/case-death-rr-metadata.json \
-	  --metadata $(dp)/jhu-counties-metadata.json \
+	  --metadata $(ds)/jhu-counties-metadata.json \
 	  --vax $(ds)/vaccines-counties.csv \
-	  --jhu $(dp)/jhu-counties.csv
+	  --jhu $(ds)/jhu-counties.csv
 
 $(dp)/case-death-rr-state.csv $(dp)/case-death-rr-state-metadata.json &: R/join-state-JHU-vaccines.R \
   $(ds)/vaccines-counties.csv \
-  $(dp)/jhu-states.csv \
-  $(dp)/jhu-states-metadata.json
+  $(ds)/jhu-states.csv \
+  $(ds)/jhu-states-metadata.json
 	@mkdir -p data-products
 	Rscript $< -o $(dp)/case-death-rr-state.csv \
     --writeMetadata $(dp)/case-death-rr-state-metadata.json \
-	  --metadata $(dp)/jhu-states-metadata.json \
+	  --metadata $(ds)/jhu-states-metadata.json \
 	  --vax $(ds)/vaccines-counties.csv \
-	  --jhu $(dp)/jhu-states.csv
+	  --jhu $(ds)/jhu-states.csv
 
 # Download the CDC case data for fips and states
 $(ds)/cdc-cases-raw.csv:
