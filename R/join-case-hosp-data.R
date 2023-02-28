@@ -198,6 +198,7 @@ case_death %>%
 
 jhu_fips <- unique(case_death_join$fips)
 cdc_fips <- unique(cdcCases$fips)
+hosp_fips <- unique(hosp$fips)
 
 case_death_join %>% 
   left_join(cdcCases %>% 
@@ -205,8 +206,6 @@ case_death_join %>%
             by = c("date", "fips")) %>%
   mutate(cases = case_when(date > as.Date("2023-02-14") ~ round(cdccase),
                            TRUE ~ cases)) %>%
-  filter(fips %in% jhu_fips &
-           fips %in% cdc_fips) %>%
   dplyr::select(-cdccase) -> case_death_cdc_join
 
 
@@ -214,7 +213,10 @@ hosp %>%
   right_join(fullDates,
              by = c("fips", "date")) %>%
   full_join(case_death_cdc_join,
-            by = c("fips", "date")) -> joined
+            by = c("fips", "date")) %>%
+  filter(fips %in% jhu_fips &
+           fips %in% cdc_fips &
+           fips %in% hosp_fips) -> joined
 
 pd()
 

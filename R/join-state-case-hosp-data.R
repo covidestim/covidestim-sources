@@ -174,6 +174,7 @@ ps("Joining JHU-vax-boost and hospitalizations data")
 
 jhu_state <- unique(case_death$state)
 cdc_state <- unique(cdcCases$state)
+hosp_state <- unique(hosp$state)
 
 case_death %>%
   group_by(state) %>%
@@ -199,15 +200,16 @@ case_death_join %>%
             by = c("date", "state")) %>%
   mutate(cases = case_when(date > as.Date("2023-02-14") ~ round(cdccase),
                            TRUE ~ cases)) %>%
-  filter(state %in% jhu_state &
-           state %in% cdc_state) %>%
   dplyr::select(-cdccase) -> case_death_cdc_join
 
 hosp %>% 
   right_join(fullDates,
              by = c("state", "date")) %>%
   full_join(case_death_cdc_join,
-            by = c("state", "date")) -> joined
+            by = c("state", "date")) %>%
+  filter(state %in% jhu_state &
+           state %in% cdc_state &
+           state %in% hosp_state) -> joined
 
 pd()
 
