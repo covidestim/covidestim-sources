@@ -220,10 +220,17 @@ hosp %>%
 
 pd()
 
+ps("Removing Nebraska counties data manually")
+nebraskaClipped <- filter(
+  joined,
+  !(str_detect(fips, '^31'))
+)
+
+pd()
 cli_h1("Processing")
 
 ps("Replacing NA hospitalizations and deaths data with {.code 0}")
-replaced <- replace_na(joined, list(hosp = 0, deaths = 0))
+replaced <- replace_na(nebraskaClipped, list(hosp = 0, deaths = 0))
 pd()
 
 
