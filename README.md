@@ -14,10 +14,13 @@ These data are offered at the following geographies:
 | Outcome              | County-level | State-level |
 |----------------------|--------------|-------------|
 | **Cases**            | ✓            | ✓           |
-| **Deaths**           | ✓            | ✓           |
+| **Deaths$*$ **        | ✓            | ✓           |
 | **Risk-ratio**       | ✓            | ✓           |
 | **Vax-boost**        | ✓            | ✓           |
 | **Hospitalizations** | ✓            | ✓           |
+
+$*$ Note that due to the discontinuation of JHU data, deaths data are marked NA 
+or $0$ beyond February 14, 2023.
 
 ## Usage and dependencies
 
@@ -98,7 +101,7 @@ All data sources for the cleaned data are either:
 
 | Data                                      | Used for                                                                                      | Accessed through                                                                        | Frequency of update |
 |-------------------------------------------|-----------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|---------------------|
-| Johns Hopkins CSSE                        | Cases, Deaths                                                                                 | Submodule `data-sources/jhu-data`                                                       | **>Daily**          |
+| Johns Hopkins CSSE                        | Cases, Deaths    | Submodule `data-sources/jhu-data`      | **>Daily, until February 14, 2023**          |
 | Covid Tracking Project                    | Cases, Deaths (2021-02 - 2021-06)                                                             | HTTP, `api.covidtracking.com`                                                           | No longer updated   |
 | NYTimes covid data                        | *Nothing, but a future merge will use it to supplement counties missing from the JHU dataset* | Submodule, `data-sources/nyt-data`                                                      | **>Daily**          |
 | USCB county, state population estimates   | Everything                                                                                    | `data-sources/{fips,state}pop.csv`, reformatted from [.xls][xlspop]                     | *1/yr?*             |
@@ -108,7 +111,8 @@ All data sources for the cleaned data are either:
 | Census Block Group polygons               | Hospitalizations (agg/disagg)                                                                 | `data-sources/cbg-polygons/` ([Git LFS][lfs]),  downloaded from [TIGER][tiger]          | *1/yr?*             |
 | Census Block Group popsize                | Hospitalizations (agg/disagg)                                                                 | `data-sources/population_by_cbg.csv/`, extracted from [TIGER][tiger]                    | *1/yr?*             |
 | Vaccination adjustments                   | Vaccination adjustments                                                                       | `data-sources/vaccines-counties.csv`                                                    | Static w/ data through Dec 2022 |
-| Data.CDC.gov                              | Booster and vaccination data                                                                  | `data-sources/cdc-vax-boost-state.csv/`, extracted from [cdc-states][cdcstate] and `data-sources/cdc-vax-boost-county.csv` extracted from [cdc-counties][cdcfips] | Daily                           |
+| Data.CDC.gov                              | Booster and vaccination data                                                                  | `data-sources/cdc-vax-boost-state.csv/`, extracted from [cdc-states][cdcstate] and `data-sources/cdc-vax-boost-county.csv` extracted from [cdc-counties][cdcfips] | Daily  |
+| Data.CDC.gov                              | Case data, after February 14, 2023                                                              |  [cdc-state-cases][cdcstatecase] and  [cdc-counties-cases][cdcfipscase] | Weekly  |
 
 [xlspop]: https://www.census.gov/geographies/reference-files/2020/demo/popest/2020-fips.html
 [da]: https://data.dartmouthatlas.org/supplemental/
@@ -116,6 +120,8 @@ All data sources for the cleaned data are either:
 [tiger]: https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2021&layergroup=Census+Tracts
 [cdcstate]: https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-Jurisdi/unsk-b7fc
 [cdcfips]: https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-County/8xkx-amqh
+[cdcfipscase]: https://data.cdc.gov/Public-Health-Surveillance/United-States-COVID-19-Community-Levels-by-County/3nnm-4jni
+[cdcstatecase]: https://data.cdc.gov/Case-Surveillance/Weekly-United-States-COVID-19-Cases-and-Deaths-by-/pwn4-m3yp
 
 Some data sources are tracked as git submodules, and other sources, being 
 accessed through APIs, are fetched over HTTP. Large static files are stored
@@ -132,23 +138,24 @@ and cleaning of all data sources.
 ## Targets
 
 - **`make data-products/case-death-rr-boost-hosp.csv`**  
-  Cleaned JHU county-level case/death data. Also writes a file
-  `jhu-counties-rejects.csv` for counties which were eliminated during the
-  cleaning process. Joins by location and date with static 
+  Reads cleaned archived JHU county-level case/death data. 
+  Joins by location and date with static 
   vaccine IFR adjustments from `data-sources/vaccines-counties` and the 
   cleaned CDC `vax-boost-county.csv`.
   Weekly aggregates are joined with the cleaned `hhs-hospitalizations-by-county.csv`. 
   Any metadata for counties included in the cleaned data will
   be stored in `case-death-rr-boost-hosp-metadata.json`. 
+  Joins the weekly CDC case data from `data-sources/cdc-cases-raw.csv`
 
 - **`make data-products/case-death-rr-boost-hosp-state.csv`**  
-  Clean JHU state-level data, splicing in archived Covid Tracking Project data.
-  For details on this, see the `makefile`. Also writes `jhu-states-rejects.csv`. 
+  Reads cleaned archived JHU state-level data, splicing in archived Covid Tracking Project data.
+  For details on this, see the `makefile`. 
   Joins by location and date with static vaccine IFR adjustments from 
   `data-sources/vaccines-counties` and the cleaned CDC `vax-boost-state.csv`.
   Weekly aggregates are joined with the cleaned `hhs-hospitalizations-by-state.csv`.
   Any metadata for counties included in the cleaned
   data will be stored in `case-death-rr-boost-hosp-state-metadata.json`. 
+  Joins the weekly CDC case data from `data-sources/cdc-cases-state-raw.csv`
 
 - **`make data-products/nyt-counties.csv`**  
   Clean NYT county-level case/death data. Writes `nyt-counties-rejects.csv`.
