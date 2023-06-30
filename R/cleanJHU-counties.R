@@ -210,6 +210,7 @@ ps("Writing metadata to {.file {metadata_path}}")
 metadata <- unknownCountiesStripped %>%
   group_by(fips) %>%
   summarize(
+    dataSource = "jhu",
     minInputDate = min(date),
     maxInputDate = max(date)
   )
