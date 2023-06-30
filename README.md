@@ -9,18 +9,16 @@ This repository provides a way to clean various input data used for the
 - **Vaccinations and boosters adminstered**
 - **Hospitalizations**
 
-These data are offered at the following geographies:
+These data are offered at the following timeframes:
 
-| Outcome              | County-level | State-level |
+| Outcome              | Daily  | Weekly |
 |----------------------|--------------|-------------|
 | **Cases**            | ✓            | ✓           |
-| **Deaths$*$ **        | ✓            | ✓           |
+| **Deaths **          | ✓            | ✓           |
 | **Risk-ratio**       | ✓            | ✓           |
 | **Vax-boost**        | ✓            | ✓           |
-| **Hospitalizations** | ✓            | ✓           |
+| **Hospitalizations** |             | ✓           |
 
-$*$ Note that due to the discontinuation of JHU data, deaths data are marked NA 
-or $0$ beyond February 14, 2023.
 
 Hospitalizations data *were* reported Friday-Thursday until June 19, 2023. Then they switched to a Sunday-Saturday reporting scheme.
 The  weekly CDC case data is reported at a weekly Thursday-Wednesday routine.
@@ -57,11 +55,23 @@ You can install them in the R console: `install.packages(c('tidyverse', 'cli', '
 
 Finally, attempt to Make the most important targets. Note, you will need GNU Make >=4.3
 installed, which does not ship with OS X.
+We identify a few different endpoints for both the county and the state geographies. In the following we describe the targets for the counties.
+The first target is daily and weekly data suitable for the covidestim website runs. This data relies on limited sources and has date constraints.
+The second set of targets is daily and weekly data suitable for manuscripts and additional analyses, and is as complete as possible, extending the time series as long as available. This includes multiple data sources and imputes data for missing counties in Nebraska for example.
 
 ```bash
 # Make all primary outcomes
-make -Bj data-products/{case-death-rr-boost-hosp.csv,case-death-rr-boost-hosp-state.csv}
+make -Bj data-products/{daily-fips-covidestim.csv daily-states-covidestim.csv}
+make -Bj data-products/{weekly-fips-covidestim.csv weekly-states-covidestim.csv}
+make -Bj data-products/{daily-fips-full.csv daily-states-full.csv}
+make -Bj data-products/{weekly-fips-full.csv weekly-states-full.csv}
 ```
+
+For the `daily` data sources, the `date` variable indicates the date of occurrence.
+For the `weely` data sources, the `date` variable indicates the last date of the week that the data refers to.
+For the `covidestim` data sources, the data are filtered to be appropriate for running a covidestim model. For `daily` datasets, this means that the data is right-censored at December 1, 2021, and for `weekly` datasets, the corresponding left-censoring at December 1, 2021. (The `covidestim` daily model is not appropriate after the Omicron variants were introduced, while the `weekly` model has assumptions specific for Omicron variants).
+The `covidestim` data sources are finally trimmed such that all relevant variables are observed.
+The `full` datasets have the full, unfiltered data; that is, for vaccination and case data, the reporting frequency changes from daily to weekly, Nebraska counties are imputed and a few additional counties are considered from the NYTimes database. 
 
 ## Repository structure
 
@@ -104,18 +114,18 @@ All data sources for the cleaned data are either:
 
 | Data                                      | Used for                                                                                      | Accessed through                                                                        | Frequency of update |
 |-------------------------------------------|-----------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|---------------------|
-| Johns Hopkins CSSE                        | Cases, Deaths    | Submodule `data-sources/jhu-data`      | **>Daily, until February 14, 2023**          |
+| Johns Hopkins CSSE                        | Cases, Deaths    | Submodule `data-sources/jhu-data`      | Stale -- data is daily, until February 14, 2023          |
 | Covid Tracking Project                    | Cases, Deaths (2021-02 - 2021-06)                                                             | HTTP, `api.covidtracking.com`                                                           | No longer updated   |
-| NYTimes covid data                        | *Nothing, but a future merge will use it to supplement counties missing from the JHU dataset* | Submodule, `data-sources/nyt-data`                                                      | **>Daily**          |
+| NYTimes covid data                        | *Nothing, but a future merge will use it to supplement counties missing from the JHU dataset* | Submodule, `data-sources/nyt-data`                                                      | Stale. Data is daily, until June 2021          |
 | USCB county, state population estimates   | Everything                                                                                    | `data-sources/{fips,state}pop.csv`, reformatted from [.xls][xlspop]                     | *1/yr?*             |
 | DHHS facility-level hospitalizations data | Hospitalizations                                                                              | HTTP, `healthdata.gov/api`                                                              | **1/wk**            |
 | Dartmouth Atlas Zip-HSA-HRR crosswalk     | Hospitalizations (agg/disagg)                                                                 | `data-sources/ZipHsaHrr18.csv`, downloaded from [dartmouthatlas.org][da]                | *1/yr?*             |
 | Dartmouth Atlas HSA polygons              | Hospitalizations (agg/disagg)                                                                 | `data-sources/hsa-polygons/` ([Git LFS][lfs]), downloaded from [dartmouthatlas.org][da] | *1/yr?*             |
 | Census Block Group polygons               | Hospitalizations (agg/disagg)                                                                 | `data-sources/cbg-polygons/` ([Git LFS][lfs]),  downloaded from [TIGER][tiger]          | *1/yr?*             |
 | Census Block Group popsize                | Hospitalizations (agg/disagg)                                                                 | `data-sources/population_by_cbg.csv/`, extracted from [TIGER][tiger]                    | *1/yr?*             |
-| Vaccination adjustments                   | Vaccination adjustments                                                                       | `data-sources/vaccines-counties.csv`                                                    | Static w/ data through Dec 2022 |
-| Data.CDC.gov                              | Booster and vaccination data                                                                  | `data-sources/cdc-vax-boost-state.csv/`, extracted from [cdc-states][cdcstate] and `data-sources/cdc-vax-boost-county.csv` extracted from [cdc-counties][cdcfips] | Daily  |
-| Data.CDC.gov                              | Case data, after February 14, 2023                                                              |  [cdc-state-cases][cdcstatecase] and  [cdc-counties-cases][cdcfipscase] | Weekly  |
+| Vaccination adjustments                   | Vaccination adjustments                                                                       | `data-sources/vaccines-counties.csv`                                                    | Static w/ data through Dec 2023 |
+| Data.CDC.gov                              | Booster and vaccination data                                                                  | `data-sources/cdc-vax-boost-state.csv/`, extracted from [cdc-states][cdcstate] and `data-sources/cdc-vax-boost-county.csv` extracted from [cdc-counties][cdcfips] | Monthly. Data is daily until June 2022, then weekly until May 2023, then monthly  |
+| Data.CDC.gov                              | Case data, after February 14, 2023                                                              |  [cdc-state-cases][cdcstatecase] and  [cdc-counties-cases][cdcfipscase] | stale -- data is weekly until May 11, 2023  |
 
 [xlspop]: https://www.census.gov/geographies/reference-files/2020/demo/popest/2020-fips.html
 [da]: https://data.dartmouthatlas.org/supplemental/
@@ -137,8 +147,25 @@ and cleaning of all data sources.
 
 -   **`data-sources/vaccines-counties`** A cached file containing daily RR adjustments to the transition probabilities for each state and county, up until December 31, 2022. This file is rendered by running vaccineAdjust::run(), with data up until December 1, 2021, and freezing the final RR adjustment. After December 1, 2021, vaccination adjustments occur within the covidestim model.
 
-
 ## Targets
+
+- **`make data-products/daily-fips-covidestim.csv`**
+  Reads the JHU county level case/death data, the CDC vaccination data,
+  the static IFR adjustments, and joins these together.
+  
+- **`make data-products/daily-fips-full.csv`**
+  Read the JHU county level case/death data, the CDC cases data, the NYT case/death data and imputes the Nebraska county data using the state average.
+  Combines the above with the CDC vaccination data, static IFR adjustments.
+
+- **`make data-products/weekly-fips-covidestim.csv`**
+  Reads and combines the JHU county level case/death data and the CDC cases data.
+  the static IFR adjustments, and joins these together.
+  
+- **`make data-products/weekly-fips-full.csv`**
+  Read the JHU county level case/death data, the CDC cases data, the NYT case/death data and imputes the Nebraska county data using the state average.
+  Combines the above with the CDC vaccination data, static IFR adjustments.
+  
+## Targets (legacy)
 
 - **`make data-products/case-death-rr-boost-hosp.csv`**  
   Reads cleaned archived JHU county-level case/death data. 
