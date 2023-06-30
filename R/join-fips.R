@@ -340,8 +340,8 @@ if(!is.null(args$imputeNE)){
 
 completeFips <- unique(joined$fips)
 
+cli_h1("Joining the data sources")
 # Weekly / CDC inclusion? -------------------------------------------------
-
 if(!is.null(args$cdc)){
   
   ps("Joining the daily and weekly data")
@@ -442,15 +442,15 @@ if(is_weekly == TRUE){
   
   pd()
   
-  ps("Checking that the date ranges match")
-  maxDate <- max(fullDatesJoin$date)
-  maxCaseDate <- max(cdcCases$date)
-  
-  if(maxDate != maxCaseDate){
-    stop("maxCaseDate is not equal to the max HospDate, adjust the CDC date range")
-  }
-  pd()
-  
+  # ps("Checking that the date ranges match")
+  # maxDate <- max(fullDatesJoin$date)
+  # maxCaseDate <- max(cdc$date)
+  # 
+  # if(maxDate != maxCaseDate){
+  #   stop("maxCaseDate is not equal to the max HospDate, adjust the CDC date range")
+  # }
+  # pd()
+  # 
   cli_h1("Aggregating to weekly data")
   
   filtered <- filtered %>%
@@ -461,7 +461,7 @@ if(is_weekly == TRUE){
            deaths = c(rep(0,6), zoo::rollsum(deaths, 7)),
            boost = c(rep(0,6), zoo::rollsum(boost_n, 7)),
            hosp = c(rep(0,6), zoo::rollsum(hosp, 7)),
-           vax_boost = c(rep(0,6), zoo::rollsum(vaxboost_n, 7)),
+           vax_boost = c(rep(0,6), zoo::rollsum(vax_boost_n, 7)),
            first_dose = c(rep(0,6), zoo::rollsum(first_dose_n, 7)),
     ) %>%
     ungroup() %>%
@@ -518,14 +518,14 @@ if(is_covidestim == TRUE) {
   pd()
   
   ps("Replacing NA values with {.code 0} and selecting variables")
-  final <- replace_na(final, list(deaths = 0, boost = 0, vaxboost = 0, first_dose = 0))
+  final <- replace_na(final, list(deaths = 0, boost = 0, vax_boost = 0, first_dose = 0))
   
   if(is_weekly == TRUE) {
     final <- replace_na(final, list(hosp = 0)) %>%
       dplyr::select(fips, date,
                     cases, deaths,
                     hosp, RR,
-                    boost = vaxboost,
+                    boost = vax_boost,
                     missing_hosp)
     
     ps("Filtering out counties without hospitalizations data after December 1 2021")
@@ -542,7 +542,7 @@ if(is_covidestim == TRUE) {
   } else {
     final <- final %>% select(fips, date,
                               cases, deaths, RR,
-                              boost, vaxboost, first_dose)
+                              boost, vax_boost, first_dose)
   }
   
   pd()

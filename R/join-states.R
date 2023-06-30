@@ -315,7 +315,7 @@ if(is_weekly == TRUE){
            deaths = c(rep(0,6), zoo::rollsum(deaths, 7)),
            boost = c(rep(0,6), zoo::rollsum(boost_n, 7)),
            hosp = c(rep(0,6), zoo::rollsum(hosp, 7)),
-           vax_boost = c(rep(0,6), zoo::rollsum(vaxboost_n, 7)),
+           vax_boost = c(rep(0,6), zoo::rollsum(vax_boost_n, 7)),
            first_dose = c(rep(0,6), zoo::rollsum(first_dose_n, 7)),
     ) %>%
     ungroup() %>%
@@ -362,7 +362,7 @@ final <- filtered
 if(is_covidestim == TRUE) {
  
     ps("Replacing NA values with {.code 0} and selecting variables")
-  final <- replace_na(final, list(deaths = 0, boost = 0, vaxboost = 0, first_dose = 0))
+  final <- replace_na(final, list(deaths = 0, boost = 0, vax_boost = 0, first_dose = 0))
   pd()
   
   if(is_weekly == TRUE) {
@@ -370,13 +370,13 @@ if(is_covidestim == TRUE) {
       dplyr::select(state, date,
                     cases, deaths,
                     hosp, RR,
-                    boost = vaxboost,
+                    boost = vax_boost,
                     missing_hosp)
     
   } else {
     final <- final %>% select(state, date,
                               cases, deaths,
-                              boost, vaxboost, first_dose, RR)
+                              boost, vax_boost, first_dose, RR)
   }
   
   pd()
