@@ -12,6 +12,202 @@ ds := data-sources
 clean: 
 	@rm -rf data-products
 
+## KEY TARGETS
+### DAILY 
+$(dp)/daily-fips-covidestim.csv $(dp)/daily-fips-covidestim-rejects.csv $(dp)/daily-fips-covidestim-metadata.json: R/join-fips.R \
+	$(dp)/jhu-counties.csv \
+	$(dp)/vax-boost-county.csv \
+	$(ds)/vaccines-counties.csv \
+	$(dp)/jhu-counties-metadata.json \
+	$(dp)/jhu-counties-rejects.csv 
+	@mkdir -p data-products/
+	Rscript $< -o $@ \
+	  --jhu $(dp)/jhu-counties.csv \
+	  --vaxboost $(dp)/vax-boost-county.csv \
+	  --rr $(ds)/vaccines-counties.csv \
+	  --weekly FALSE \
+	  --covidestim TRUE \
+	  --metadataJHU $(dp)/jhu-counties-metadata.json \
+	  --rejectsJHU $(dp)/jhu-counties-rejects.csv \
+	  --writeRejects $(dp)/daily-fips-covidestim-rejects.csv \
+	  --writeMetadata $(dp)/daily-fips-covidestim-metadata.json
+
+$(dp)/daily-fips-full.csv $(dp)/daily-fips-full-rejects.csv $(dp)/daily-fips-full-metadata.json: R/join-fips.R \
+	$(dp)/jhu-counties.csv \
+	$(dp)/vax-boost-county.csv \
+	$(ds)/vaccines-counties.csv \
+	$(dp)/cdc-cases.csv \
+	$(dp)/hhs-hospitalizations-by-county.csv \
+	$(dp)/jhu-counties-metadata.json \
+	$(dp)/jhu-counties-rejects.csv \
+	$(dp)/nytimes-counties.csv \
+	$(dp)/nytimes-counties-metadata.json \
+	$(dp)/nytimes-counties-rejects.csv \
+	$(dp)/jhu-states.csv \
+	$(ds)/fipsstate.csv 
+	@mkdir -p data-products/
+	Rscript $< -o $@ \
+	  --jhu $(dp)/jhu-counties.csv \
+	  --vaxboost $(dp)/vax-boost-county.csv \
+	  --rr $(ds)/vaccines-counties.csv \
+	  --hosp $(dp)/hhs-hospitalizations-by-county.csv \
+	  --cdc $(dp)/cdc-cases.csv \
+	  --covidestim FALSE \
+	  --weekly FALSE \
+	  --metadataJHU $(dp)/jhu-counties-metadata.json \
+	  --rejectsJHU $(dp)/jhu-counties-rejects.csv \
+	  --nyt $(dp)/nytimes-counties.csv \
+	  --metadataNYT $(dp)/nytimes-counties-metadata.json \
+	  --rejectsNYT $(dp)/nytimes-counties-rejects.csv \
+	  --imputeNE $(dp)/jhu-states.csv \
+	  --statemap $(ds)/fipsstate.csv \
+	  --writeRejects $(dp)/daily-fips-full-rejects.csv \
+	  --writeMetadata $(dp)/daily-fips-full-metadata.json
+	  
+### WEEKLY
+$(dp)/weekly-fips-covidestim.csv $(dp)/weekly-fips-covidestim-rejects.csv $(dp)/weekly-fips-covidestim-metadata.json: R/join-fips.R \
+	$(dp)/jhu-counties.csv \
+	$(dp)/vax-boost-county.csv \
+	$(ds)/vaccines-counties.csv \
+	$(dp)/cdc-cases.csv \
+	$(dp)/hhs-hospitalizations-by-county.csv \
+	$(dp)/jhu-counties-metadata.json \
+	$(dp)/jhu-counties-rejects.csv
+	@mkdir -p data-products/
+	Rscript $< -o $@ \
+	  --jhu $(dp)/jhu-counties.csv \
+	  --vaxboost $(dp)/vax-boost-county.csv \
+	  --rr $(ds)/vaccines-counties.csv \
+	  --hosp $(dp)/hhs-hospitalizations-by-county.csv \
+	  --cdc $(dp)/cdc-cases.csv \
+	  --covidestim TRUE \
+	  --weekly TRUE \
+	  --metadataJHU $(dp)/jhu-counties-metadata.json \
+	  --rejectsJHU $(dp)/jhu-counties-rejects.csv \
+	  --writeRejects $(dp)/weekly-fips-covidestim-rejects.csv \
+	  --writeMetadata $(dp)/weekly-fips-covidestim-metadata.json
+	  
+$(dp)/weekly-fips-full.csv $(dp)/weekly-fips-full-rejects.csv $(dp)/weekly-fips-full-metadata.json: R/join-fips.R \
+	$(dp)/jhu-counties.csv \
+	$(dp)/vax-boost-county.csv \
+	$(ds)/vaccines-counties.csv \
+	$(dp)/cdc-cases.csv \
+	$(dp)/hhs-hospitalizations-by-county.csv \
+	$(dp)/jhu-counties-metadata.json \
+	$(dp)/jhu-counties-rejects.csv \
+	$(dp)/nytimes-counties.csv \
+	$(dp)/nytimes-counties-metadata.json \
+	$(dp)/nytimes-counties-rejects.csv \
+	$(dp)/jhu-states.csv \
+	$(ds)/fipsstate.csv 
+	@mkdir -p data-products/
+	Rscript $< -o $@ \
+	  --jhu $(dp)/jhu-counties.csv \
+	  --vaxboost $(dp)/vax-boost-county.csv \
+	  --rr $(ds)/vaccines-counties.csv \
+	  --hosp $(dp)/hhs-hospitalizations-by-county.csv \
+	  --cdc $(dp)/cdc-cases.csv \
+	  --covidestim FALSE \
+	  --weekly TRUE \
+	  --metadataJHU $(dp)/jhu-counties-metadata.json \
+	  --rejectsJHU $(dp)/jhu-counties-rejects.csv \
+	  --nyt $(dp)/nytimes-counties.csv \
+	  --metadataNYT $(dp)/nytimes-counties-metadata.json \
+	  --rejectsNYT $(dp)/nytimes-counties-rejects.csv \
+	  --imputeNE $(dp)/jhu-states.csv \
+	  --statemap $(ds)/fipsstate.csv \
+	  --writeRejects $(dp)/weekly-fips-full-rejects.csv \
+	  --writeMetadata $(dp)/weekly-fips-full-metadata.json	  
+
+
+#### STATES 
+### DAILY 
+$(dp)/daily-states-covidestim.csv $(dp)/daily-states-covidestim-rejects.csv $(dp)/daily-states-covidestim-metadata.json: R/join-states.R \
+	$(dp)/jhu-states.csv \
+	$(dp)/vax-boost-state.csv \
+	$(ds)/vaccines-counties.csv \
+	$(dp)/jhu-states-metadata.json \
+	$(dp)/jhu-states-rejects.csv 
+	@mkdir -p data-products/
+	Rscript $< -o $@ \
+	  --jhu $(dp)/jhu-states.csv \
+	  --vaxboost $(dp)/vax-boost-state.csv \
+	  --rr $(ds)/vaccines-counties.csv \
+	  --weekly FALSE \
+	  --covidestim TRUE \
+	  --metadataJHU $(dp)/jhu-states-metadata.json \
+	  --rejectsJHU $(dp)/jhu-states-rejects.csv \
+	  --writeRejects $(dp)/daily-states-covidestim-rejects.csv \
+	  --writeMetadata $(dp)/daily-states-covidestim-metadata.json
+
+$(dp)/daily-states-full.csv $(dp)/daily-states-full-rejects.csv $(dp)/daily-states-full-metadata.json: R/join-states.R \
+	$(dp)/jhu-states.csv \
+	$(dp)/vax-boost-state.csv \
+	$(ds)/vaccines-counties.csv \
+	$(dp)/cdc-cases-state.csv \
+	$(dp)/hhs-hospitalizations-by-state.csv \
+	$(dp)/jhu-states-metadata.json \
+	$(dp)/jhu-states-rejects.csv 
+	@mkdir -p data-products/
+	Rscript $< -o $@ \
+	  --jhu $(dp)/jhu-states.csv \
+	  --vaxboost $(dp)/vax-boost-state.csv \
+	  --rr $(ds)/vaccines-counties.csv \
+	  --hosp $(dp)/hhs-hospitalizations-by-state.csv \
+	  --cdc $(dp)/cdc-cases-state.csv \
+	  --covidestim FALSE \
+	  --weekly FALSE \
+	  --metadataJHU $(dp)/jhu-states-metadata.json \
+	  --rejectsJHU $(dp)/jhu-states-rejects.csv \
+	  --writeRejects $(dp)/daily-states-full-rejects.csv \
+	  --writeMetadata $(dp)/daily-states-full-metadata.json
+	  
+### WEEKLY
+$(dp)/weekly-states-covidestim.csv $(dp)/weekly-states-covidestim-rejects.csv $(dp)/weekly-states-covidestim-metadata.json: R/join-states.R \
+	$(dp)/jhu-states.csv \
+	$(dp)/vax-boost-state.csv \
+	$(ds)/vaccines-counties.csv \
+	$(dp)/cdc-cases-state.csv \
+	$(dp)/hhs-hospitalizations-by-state.csv \
+	$(dp)/jhu-states-metadata.json \
+	$(dp)/jhu-states-rejects.csv  
+	@mkdir -p data-products/
+	Rscript $< -o $@ \
+	  --jhu $(dp)/jhu-states.csv \
+	  --vaxboost $(dp)/vax-boost-state.csv \
+	  --rr $(ds)/vaccines-counties.csv \
+	  --hosp $(dp)/hhs-hospitalizations-by-state.csv \
+	  --cdc $(dp)/cdc-cases-state.csv \
+	  --covidestim TRUE \
+	  --weekly TRUE \
+	  --metadataJHU $(dp)/jhu-states-metadata.json \
+	  --rejectsJHU $(dp)/jhu-states-rejects.csv \
+	  --writeRejects $(dp)/weekly-states-covidestim-rejects.csv \
+	  --writeMetadata $(dp)/weekly-states-covidestim-metadata.json
+	  
+$(dstatesp)/weekly-states-full.csv $(dp)/weekly-states-full-rejects.csv $(dp)/weekly-states-full-metadata.json: R/join-states.R \
+	$(dp)/jhu-states.csv \
+	$(dp)/vax-boost-state.csv \
+	$(ds)/vaccines-counties.csv \
+	$(dp)/cdc-cases-state.csv \
+	$(dp)/hhs-hospitalizations-by-state.csv \
+	$(dp)/jhu-states-metadata.json \
+	$(dp)/jhu-states-rejects.csv 
+	@mkdir -p data-products/
+	Rscript $< -o $@ \
+	  --jhu $(dp)/jhu-states.csv \
+	  --vaxboost $(dp)/vax-boost-state.csv \
+	  --rr $(ds)/vaccines-states.csv \
+	  --hosp $(dp)/hhs-hospitalizations-by-state.csv \
+	  --cdc $(dp)/cdc-cases-state.csv \
+	  --covidestim FALSE \
+	  --weekly TRUE \
+	  --metadataJHU $(dp)/jhu-states-metadata.json \
+	  --rejectsJHU $(dp)/jhu-states-rejects.csv \
+	  --writeRejects $(dp)/weekly-states-full-rejects.csv \
+	  --writeMetadata $(dp)/weekly-states-full-metadata.json	  
+## CLEANING AND PREPARING DATA STREMS
+
 # This recipe produces cleaned state-level data from the Covid Tracking Project
 # API.
 $(dp)/covidtracking-smoothed.csv: R/cleanCTP.R
