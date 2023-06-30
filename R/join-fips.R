@@ -438,7 +438,7 @@ if(is_weekly == TRUE){
                                      FALSE),
               .groups = 'drop') 
   
-  fullDatesJoin <- fullDates %>% select(date, fips)
+  fullDatesJoin <- fullDates %>% select(date, fips, missing_hosp)
   
   pd()
   

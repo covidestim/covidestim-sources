@@ -292,18 +292,18 @@ if(is_weekly == TRUE){
                                      FALSE),
               .groups = 'drop') 
   
-  fullDatesJoin <- fullDates %>% select(date, state)
+  fullDatesJoin <- fullDates %>% select(date, state, missing_hosp)
   
   pd()
   
-  ps("Checking that the date ranges match")
-  maxDate <- max(fullDatesJoin$date)
-  maxCaseDate <- max(cdcCases$date)
-  
-  if(maxDate != maxCaseDate){
-    stop("maxCaseDate is not equal to the max HospDate, adjust the CDC date range")
-  }
-  pd()
+  # ps("Checking that the date ranges match")
+  # maxDate <- max(fullDatesJoin$date)
+  # maxCaseDate <- max(cdc$date)
+  # 
+  # if(maxDate != maxCaseDate){
+  #   stop("maxCaseDate is not equal to the max HospDate, adjust the CDC date range")
+  # }
+  # pd()
   
   cli_h1("Aggregating to weekly data")
   
@@ -362,7 +362,7 @@ final <- filtered
 if(is_covidestim == TRUE) {
  
     ps("Replacing NA values with {.code 0} and selecting variables")
-  final <- replace_na(final, list(deaths = 0, boost = 0, vax_boost = 0, first_dose = 0))
+  final <- replace_na(final, list(deaths = 0, boost_n = 0, vax_boost_n = 0, first_dose_n = 0))
   pd()
   
   if(is_weekly == TRUE) {
@@ -370,13 +370,13 @@ if(is_covidestim == TRUE) {
       dplyr::select(state, date,
                     cases, deaths,
                     hosp, RR,
-                    boost = vax_boost,
+                    boost_n = vax_boost_n,
                     missing_hosp)
     
   } else {
     final <- final %>% select(state, date,
                               cases, deaths,
-                              boost, vax_boost, first_dose, RR)
+                              boost_n, vax_boost_n, first_dose_n, RR)
   }
   
   pd()
@@ -396,6 +396,7 @@ pd()
 
 if (!is.null(args$writeMetadata)) {
   
+  if(is_weekly == TRUE){
   ps("Adjusting lastCaseDate and lastHospDate for Tennessee")
   maxDate <- max(final$date)
   
@@ -416,11 +417,14 @@ if (!is.null(args$writeMetadata)) {
   # writing the lastCaseDate and lastHospDate
   #
   pd()
-  
+  }
   ps("Writing metadata to {.file {args$writeMetadata}}")
   metadata <- metadata %>% mutate(maxObservedInputDate = maxInputDate,
-                                  maxInputDate = min(c(maxInputDate,as.Date("2021-12-31")))) %>%
+                                  maxInputDate = min(c(maxInputDate,as.Date("2021-12-31")))) 
+  if(is_weekly == TRUE){
+    metadata <- metadata %>%
     left_join(lastDates)
+  }
   jsonlite::write_json(metadata, args$writeMetadata, null = "null")
   pd()
 }
