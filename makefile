@@ -185,7 +185,7 @@ $(dp)/weekly-states-covidestim.csv $(dp)/weekly-states-covidestim-rejects.csv $(
 	  --writeRejects $(dp)/weekly-states-covidestim-rejects.csv \
 	  --writeMetadata $(dp)/weekly-states-covidestim-metadata.json
 	  
-$(dstatesp)/weekly-states-full.csv $(dp)/weekly-states-full-rejects.csv $(dp)/weekly-states-full-metadata.json: R/join-states.R \
+$(dp)/weekly-states-full.csv $(dp)/weekly-states-full-rejects.csv $(dp)/weekly-states-full-metadata.json: R/join-states.R \
 	$(dp)/jhu-states.csv \
 	$(dp)/vax-boost-state.csv \
 	$(ds)/vaccines-counties.csv \
@@ -197,7 +197,7 @@ $(dstatesp)/weekly-states-full.csv $(dp)/weekly-states-full-rejects.csv $(dp)/we
 	Rscript $< -o $@ \
 	  --jhu $(dp)/jhu-states.csv \
 	  --vaxboost $(dp)/vax-boost-state.csv \
-	  --rr $(ds)/vaccines-states.csv \
+	  --rr $(ds)/vaccines-counties.csv \
 	  --hosp $(dp)/hhs-hospitalizations-by-state.csv \
 	  --cdc $(dp)/cdc-cases-state.csv \
 	  --covidestim FALSE \
