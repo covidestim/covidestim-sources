@@ -8,7 +8,7 @@ ps <- cli_process_start; pd <- cli_process_done
 'FIPS data
 
 Usage:
-  join-fips.R -o <path> --jhu <path> [--cdc <path>] --vaxboost <path> --rr <path> [--hosp <path>] [--covidestim <logical>] [--weekly <logical>] --metadataJHU <path> --rejectsJHU <path> [--nyt <path>] [--rejectsNYT <path>] [--imputeNE <path>] [--statemap <path>] [--writeRejects <path>] [--writeMetadata <path>]
+  join-fips.R -o <path> --jhu <path> [--cdc <path>] --vaxboost <path> --rr <path> [--hosp <path>] [--covidestim <logical>] [--weekly <logical>] --metadataJHU <path> --rejectsJHU <path> [--nyt <path>] [--metadataNYT <path>] [--rejectsNYT <path>] [--imputeNE <path>] [--statemap <path>] [--writeRejects <path>] [--writeMetadata <path>]
   join-fips.R (-h | --help)
   join-fips.R --version
 
@@ -24,6 +24,7 @@ Options:
   --metadataJHU <path>    Where metadata .json describing JHU data is stored
   --rejectsJHU <path>     Path to rejected JHU FIPS [fips, code, reason]
   --nyt <path>            (optional) Path to nyt data
+  --metadataNYT <path>    Where metadata .json describing NYT data is stored
   --rejectsNYT <path>     (required if nyt) Path to rejected NYT FIPS [fips, code, reason]
   --imputeNE <path>       (optional) Path to stateJHU data. If included Nebraska counties are imputed
   --statemap <path>       (required if imputeNE) Path to .csv mapping from FIPS=>state [fips, state]
