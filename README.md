@@ -21,8 +21,9 @@ These data are offered at the following timeframes:
 
 
 Hospitalizations data *were* reported Friday-Thursday until June 19, 2023. Then they switched to a Sunday-Saturday reporting scheme.
-The  weekly CDC case data is reported at a weekly Thursday-Wednesday routine.
-We match the hospitalization weeks to the clostest case report week. That is, the hospitalization reports from Sunday February 5- Saturday February 11 are matched to the case reportes from Thursday February 2 - Wedenesday February 8 (2023 reference dates).
+The weekly CDC case data is reported at a weekly Thursday-Wednesday routine.
+We match the hospitalization weeks to the closest case report week. That is, the hospitalization reports from Sunday February 5-Saturday February 11 are matched to the case reports from Thursday February 2 - Wednesday February 8 (2023 reference dates).
+
 ## Usage and dependencies
 
 This repository is essentially a series of GNU Make targets (see `makefile`),

@@ -96,6 +96,8 @@ case_death <- read_csv(
     deaths = col_number(),
     RR = col_number(),
     boost_n = col_number()
+    # Note that date = the date updated, which is a Thursday.
+    # Although the week runs from Thursday - Wednesday. 
   )
 )
 pd()
@@ -106,7 +108,7 @@ hosp <- read_csv(
   col_types = cleanedhhsSpec
 ) %>%
   transmute(date = weekstart + 4,
-            ## weekstart is a Sunday, date (weekend) should be a Thursday, so add 4 days to match
+            # weekstart = a Sunday, date = the week-end should be the Thursday (to match case data)
             fips = fips,
             hosp = admissionsAdultsConfirmed_min) %>%
   drop_na(date)
