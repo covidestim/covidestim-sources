@@ -522,7 +522,7 @@ if(is_covidestim == TRUE) {
   
   if(is_weekly == TRUE) {
     final <- replace_na(final, list(hosp = 0)) %>%
-      dplyr::select(fips, date,
+      transmute(fips, date,
                     cases, deaths,
                     hosp, RR,
                     boost = vax_boost,
