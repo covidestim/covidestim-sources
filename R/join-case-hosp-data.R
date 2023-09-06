@@ -105,7 +105,8 @@ hosp <- read_csv(
   args$hosp,
   col_types = cleanedhhsSpec
 ) %>%
-  transmute(date = weekstart + 6,
+  transmute(date = weekstart + 4,
+            ## weekstart is a Sunday, date (weekend) should be a Thursday, so add 4 days to match
             fips = fips,
             hosp = admissionsAdultsConfirmed_min) %>%
   drop_na(date)

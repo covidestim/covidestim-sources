@@ -105,7 +105,8 @@ hosp <- read_csv(
   args$hosp,
   col_types = cleanedhhsSpec
 ) %>%
-  transmute(date = weekstart + 6,
+  transmute(date = weekstart + 4,
+            # weekstart = a Sunday, date = the week-end should be Thursday(to match case data)
             state = state,
             hosp = admissionsAdultsConfirmed_min)
 pd()

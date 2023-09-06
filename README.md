@@ -22,6 +22,9 @@ These data are offered at the following geographies:
 $*$ Note that due to the discontinuation of JHU data, deaths data are marked NA 
 or $0$ beyond February 14, 2023.
 
+Hospitalizations data *were* reported Friday-Thursday until June 19, 2023. Then they switched to a Sunday-Saturday reporting scheme.
+The  weekly CDC case data is reported at a weekly Thursday-Wednesday routine.
+We match the hospitalization weeks to the clostest case report week. That is, the hospitalization reports from Sunday February 5- Saturday February 11 are matched to the case reportes from Thursday February 2 - Wedenesday February 8 (2023 reference dates).
 ## Usage and dependencies
 
 This repository is essentially a series of GNU Make targets (see `makefile`),
