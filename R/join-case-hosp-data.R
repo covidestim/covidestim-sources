@@ -157,7 +157,8 @@ fullDates <- full_join(firstHospDates,
   drop_na() %>%
   group_by(fips) %>%
   summarize(date = seq.Date(firstHospDate,
-                            lastCaseDate,
+                            # choose last of case and hosp dates, to ensure latest data is used
+                            max(lastCaseDate, lastHospDate),
                             by = '1 week'),
             missing_hosp = if_else(date > lastHospDate,
                                TRUE,
@@ -171,9 +172,11 @@ pd()
 ps("Checking that the date ranges match")
 maxDate <- max(fullDatesJoin$date)
 maxCaseDate <- max(cdcCases$date)
+firstHospDate <- min(hosp$date)
+lastHospDate <- max(hosp$date)
 
-if(maxDate != maxCaseDate){
-  stop("maxCaseDate is not equal to the max HospDate, adjust the CDC date range")
+if(! maxCaseDate %in% seq.Date(firstHospDate, lastHospDate, by = 7)){
+  stop("maxCaseDate is not in the hospdate range, make sure the week-ends are matching")
 }
 pd()
 
@@ -221,6 +224,17 @@ hosp %>%
 
 pd()
 
+ps("Checking that at least 8 observations are present for cases and hospitalizations")
+joined %>%
+  group_by(fips) %>%
+  summarize(nobs = sum(!is.na(cases) & !is.na(hosp)),
+            .groups= 'drop') %>%
+  filter(nobs < 8) %>%
+  pull(fips) -> insuffDataFips
+joined <- joined %>%
+  filter(! fips %in% insuffDataFips)
+pd()
+
 ps("Removing Nebraska counties data manually")
 nebraskaClipped <- filter(
   joined,
@@ -266,14 +280,15 @@ ps("Adjusting lastCaseDate and lastHospDate for Tennessee")
 maxDate <- max(final$date)
 
 lastDates <- lastHospDates %>%
-  left_join(lastCaseDates, by = "fips") %>%
-  mutate(lastHospDate = case_when(str_detect(fips, '^47') & lastHospDate == max(lastCaseDate) ~ lastHospDate - 7,
+  left_join(lastCaseDates, by = "fips") %>% View
+  mutate(lastHospDate = case_when(str_detect(fips, '^47') & lastHospDate >= max(lastCaseDate) ~ lastHospDate - 7,
                                   # if the lastHospDate, that is, week ENDING in DATE is larger than the maximum date in the data
                                   # that is, the last complete week, the maxDate should be reduced by one week
                                   lastHospDate > maxDate ~ maxDate,
-                                  TRUE ~ lastHospDate),
-         lastCaseDate = case_when(str_detect(fips, '^47') & lastCaseDate == max(lastCaseDate) ~ lastCaseDate - 7,
-                                  TRUE ~ lastCaseDate))
+                                  TRUE ~ lastHospDate))
+         # ,## Outdated because case data are all historic, no longer updated currently
+         # lastCaseDate = case_when(str_detect(fips, '^47') & lastCaseDate == max(lastCaseDate) ~ lastCaseDate - 7,
+         #                          TRUE ~ lastCaseDate))
 
 # checking what the current last case and last hosp dates are in the data
 # checking what the current last case and last hosp dates are for Tennessee

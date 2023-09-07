@@ -151,7 +151,8 @@ fullDates <- full_join(firstHospDates,
   drop_na() %>%
   group_by(state) %>%
   summarize(date = seq.Date(firstHospDate,
-                            lastCaseDate,
+                            # choose last of case and hosp dates, to ensure latest data is used
+                            max(lastCaseDate, lastHospDate),
                             by = '1 week'),
             missing_hosp = if_else(date > lastHospDate,
                                TRUE,
@@ -165,9 +166,11 @@ pd()
 ps("Checking that the date ranges match")
 maxDate <- max(fullDatesJoin$date)
 maxCaseDate <- max(cdcCases$date)
+firstHospDate <- min(hosp$date)
+lastHospDate <- max(hosp$date)
 
-if(maxDate != maxCaseDate){
-  stop("maxCaseDate is not equal to the max HospDate, adjust the CDC date range")
+if(! maxDate %in% seq.Date(firstHospDate, lastHospDate, by = 7)){
+  stop("maxCaseDate is not in the HospDate range, check the dates and make sure the week-ends are matching")
 }
 pd()
 
@@ -236,9 +239,10 @@ maxDate <- max(final$date)
 
 lastDates <- lastCaseDates %>%
   left_join(lastHospDates, by = "state") %>%
-  mutate(lastCaseDate = case_when(state == "Tennessee" & lastCaseDate == max(lastCaseDate, na.rm = TRUE) ~ lastCaseDate - 7,
-                          TRUE ~ lastCaseDate),
-         lastHospDate = case_when(state == "Tennessee" & lastHospDate == max(lastCaseDate, na.rm = TRUE) ~ lastHospDate - 7,
+  mutate(
+    # lastCaseDate = case_when(state == "Tennessee" & lastCaseDate == max(lastCaseDate, na.rm = TRUE) ~ lastCaseDate - 7,
+                          # TRUE ~ lastCaseDate),# outdated, case data is always smaller than hospitalization data
+         lastHospDate = case_when(state == "Tennessee" & lastHospDate >= max(lastCaseDate, na.rm = TRUE) ~ lastHospDate - 7,
                                   # if the lastHospDate, that is, week ENDING in DATE is larger than the maximum date in the data
                                   # that is, the last complete week, the maxDate should be reduced by one week
                           lastHospDate > maxDate ~ maxDate,
