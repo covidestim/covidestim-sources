@@ -166,8 +166,8 @@ pd()
 ps("Checking that the date ranges match")
 maxDate <- max(fullDatesJoin$date)
 maxCaseDate <- max(cdcCases$date)
-firstHospDate <- min(hosp$date)
-lastHospDate <- max(hosp$date)
+firstHospDate <- min(hosp$date, na.rm = TRUE)
+lastHospDate <- max(hosp$date, na.rm = TRUE)
 
 if(! maxDate %in% seq.Date(firstHospDate, lastHospDate, by = 7)){
   stop("maxCaseDate is not in the HospDate range, check the dates and make sure the week-ends are matching")

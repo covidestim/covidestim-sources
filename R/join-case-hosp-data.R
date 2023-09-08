@@ -280,7 +280,7 @@ ps("Adjusting lastCaseDate and lastHospDate for Tennessee")
 maxDate <- max(final$date)
 
 lastDates <- lastHospDates %>%
-  left_join(lastCaseDates, by = "fips") %>% View
+  left_join(lastCaseDates, by = "fips") %>%
   mutate(lastHospDate = case_when(str_detect(fips, '^47') & lastHospDate >= max(lastCaseDate) ~ lastHospDate - 7,
                                   # if the lastHospDate, that is, week ENDING in DATE is larger than the maximum date in the data
                                   # that is, the last complete week, the maxDate should be reduced by one week
