@@ -219,8 +219,8 @@ pd()
 
 cli_h1("Processing")
 
-ps("Replacing NA hospitalizations and deaths data with {.code 0}")
-replaced <- replace_na(joined, list(hosp = 0, deaths = 0))
+ps("Replacing NA hospitalizations, cases and deaths data with {.code 0}")
+replaced <- replace_na(joined, list(hosp = 0, deaths = 0, cases = 0))
 pd()
 
 ps("Selecting variables and data after December 1 2021")

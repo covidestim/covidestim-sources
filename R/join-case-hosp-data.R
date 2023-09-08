@@ -244,8 +244,8 @@ nebraskaClipped <- filter(
 pd()
 cli_h1("Processing")
 
-ps("Replacing NA hospitalizations and deaths data with {.code 0}")
-replaced <- replace_na(nebraskaClipped, list(hosp = 0, deaths = 0))
+ps("Replacing NA hospitalizations, cases and deaths data with {.code 0}")
+replaced <- replace_na(nebraskaClipped, list(hosp = 0, deaths = 0, cases = 0))
 pd()
 
 
