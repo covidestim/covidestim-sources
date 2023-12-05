@@ -540,9 +540,9 @@ if(is_covidestim == TRUE) {
     pd()
     
   } else {
-    final <- final %>% select(fips, date,
+    final <- final %>% dplyr::select(fips, date,
                               cases, deaths, RR,
-                              boost, vax_boost, first_dose)
+                              boost_n, vax_boost_n, first_dose_n)
   }
   
   pd()
