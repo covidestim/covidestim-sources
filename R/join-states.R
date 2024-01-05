@@ -174,7 +174,8 @@ ps("Loading vaccine IFR adjustment data from {.file {args$rr}}")
 rr <- read_csv(args$rr, col_types = rrSpec) %>%
   transmute(state = FIPS,
          date = Date,
-         RR)
+         RR) %>%
+  filter(state %in% unique(jhu$state))
 pd()
 
 if(!is.null(args$hosp)){
@@ -225,18 +226,21 @@ if(!is.null(args$hosp)){
   pd()
   
   maxCompleteDate <- min(maxCompleteDate, max(hosp$date))
+  maxDate <- max(maxCompleteDate, max(hosp$date))
 
 }
 
 # Joining vaxxincation data  -------------------------------------------------------
 
-ps("Left joining casedeath, vaxboost and RR dataframes")
+ps("Full joining casedeath, vaxboost and RR dataframes")
 joined <- joined %>% 
   full_join(boost, by = c("date","state")) %>%
   full_join(rr, by = c("date", "state"))
 pd()
 
+
 maxCompleteDate <- min(maxCompleteDate, max(boost$date), max(rr$date))
+maxDate <- max(maxDate, max(boost$date))
 dailyVaxDates <- seq(min(boost$date), max(boost$date), by = 1)
 maxDailyDate <- dailyVaxDates[which(! dailyVaxDates %in% unique(boost$date))[1]]
 
@@ -245,27 +249,48 @@ maxDailyDate <- dailyVaxDates[which(! dailyVaxDates %in% unique(boost$date))[1]]
 filtered <- joined 
 
 # Aggregating to weekly data ----------------------------------------------
+  
+  lastDeathDates <- jhu %>% 
+    group_by(state) %>%
+    summarize(lastDeathDate = max(date, na.rm = TRUE),
+              .groups = 'drop')
+
+  lastCaseDates <- jhu %>% 
+    group_by(state) %>%
+    summarize(lastCaseDate = max(date, na.rm = TRUE),
+              .groups = 'drop')
+  
+## Placeholder, adjust to filter such that the last DAILY vaccination date is recorded here  
+  # lastVaxDates <- boost %>%
+  #   group_by(state) %>%
+  #   summarize(lastVaxDate = max(date, na.rm = TRUE),
+  #             .groups = 'drop')
+  # 
 
 if(is_weekly == TRUE){
   
   ps("Matching week end dates")
-  
   lastCaseDates <- cdc %>%
     group_by(state) %>%
-    summarize(lastCaseDate = max(date, na.rm = TRUE))
+    summarize(lastCaseDate = max(date, na.rm = TRUE),
+              .groups = 'drop')
   lastHospDates <- hosp %>%
     group_by(state) %>%
-    summarize(lastHospDate = max(date, na.rm = TRUE))
+    summarize(lastHospDate = max(date, na.rm = TRUE),
+              .groups = 'drop')
   lastVaxDates <- boost %>%
     group_by(state) %>%
-    summarize(lastVaxDate = max(date, na.rm = TRUE))
+    summarize(lastVaxDate = max(date, na.rm = TRUE),
+              .groups = 'drop')
   
   firstCaseDates <- jhu %>% 
     group_by(state) %>%
-    summarize(firstCaseDate = min(date, na.rm = TRUE))
+    summarize(firstCaseDate = min(date, na.rm = TRUE),
+              .groups = 'drop')
   firstHospDates <- hosp %>%
     group_by(state) %>%
-    summarize(firstHospDate = min(date, na.rm = TRUE))
+    summarize(firstHospDate = min(date, na.rm = TRUE),
+              .groups = 'drop')
   
   fullDates <- full_join(firstHospDates,
                          firstCaseDates, 
@@ -273,15 +298,21 @@ if(is_weekly == TRUE){
     full_join(lastVaxDates, by = "state") %>%
     full_join(lastHospDates, by = "state") %>%
     full_join(lastCaseDates, by = "state") %>%
-    mutate(firstDate = case_when(firstHospDate > firstCaseDate ~ firstHospDate,
-                                 TRUE ~ firstCaseDate),
-           lastDate = case_when(lastHospDate > lastCaseDate &
-                                  lastVaxDate > lastCaseDate ~ lastCaseDate,
-                                lastHospDate > lastVaxDate &
-                                  lastCaseDate > lastVaxDate ~ lastVaxDate,
-                                lastCaseDate > lastHospDate &
-                                  lastVaxDate > lastHospDate ~ lastHospDate),
-           firstDate = case_when(firstDate < lastDate ~ firstDate)) %>%
+    mutate(firstDate = case_when(
+      # if the starting week of firstHospDate does not align with the firstCaseDate, adjust case dates to match the weeks 
+      as.numeric(firstHospDate - firstCaseDate)%%7 != 0 ~ firstHospDate - ((as.numeric(firstHospDate - firstCaseDate)%/%7) * 7),
+      TRUE ~ firstCaseDate),
+      lastDate = max(lastCaseDate, lastHospDate, lastVaxDate, na.rm = TRUE)
+    ) %>%
+    # mutate(firstDate = case_when(firstHospDate > firstCaseDate ~ firstHospDate,
+    #                              TRUE ~ firstCaseDate),
+    #        lastDate = case_when(lastHospDate > lastCaseDate &
+    #                               lastVaxDate > lastCaseDate ~ lastCaseDate,
+    #                             lastHospDate > lastVaxDate &
+    #                               lastCaseDate > lastVaxDate ~ lastVaxDate,
+    #                             lastCaseDate > lastHospDate &
+    #                               lastVaxDate > lastHospDate ~ lastHospDate),
+    #        firstDate = case_when(firstDate < lastDate ~ firstDate)) %>%
     drop_na() %>%
     group_by(state) %>%
     summarize(date = seq.Date(firstDate,
@@ -310,6 +341,7 @@ if(is_weekly == TRUE){
   filtered <- filtered %>%
     group_by(state) %>%
     arrange(date) %>%
+    replace(is.na(.), 0) %>%
     ## Compute the weekly rolling sum of cases, deaths, boosters;
     mutate(cases = c(rep(0,6), zoo::rollsum(cases, 7)),
            deaths = c(rep(0,6), zoo::rollsum(deaths, 7)),
@@ -340,7 +372,7 @@ if(is_covidestim == TRUE){
 } else {
   minDate = minCompleteDate
   if(is_weekly == TRUE){
-    maxDate = max(joined$date)
+    maxDate = max(lastCaseDates$lastCaseDate, lastHospDates$lastHospDate, lastVaxDates$lastVaxDate, lastDeathDates$lastDeathDate)
   } else {
     maxDate = maxDailyDate
   }
@@ -402,6 +434,8 @@ if (!is.null(args$writeMetadata)) {
   
   lastDates <- lastCaseDates %>%
     left_join(lastHospDates, by = "state") %>%
+    left_join(lastDeathDates, by = "state") %>%
+    left_join(lastVaxDates, by = "state") %>%
     mutate(lastCaseDate = case_when(state == "Tennessee" & lastCaseDate == max(lastCaseDate, na.rm = TRUE) ~ lastCaseDate - 7,
                                     TRUE ~ lastCaseDate),
            lastHospDate = case_when(state == "Tennessee" & lastHospDate == max(lastCaseDate, na.rm = TRUE) ~ lastHospDate - 7,
@@ -420,7 +454,7 @@ if (!is.null(args$writeMetadata)) {
   }
   ps("Writing metadata to {.file {args$writeMetadata}}")
   metadata <- metadata %>% mutate(maxObservedInputDate = maxInputDate,
-                                  maxInputDate = min(c(maxInputDate,as.Date("2021-12-31")))) 
+                                  maxInputDate = min(maxInputDate,as.Date("2021-12-31"))) 
   if(is_weekly == TRUE){
     metadata <- metadata %>%
     left_join(lastDates)
