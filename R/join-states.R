@@ -235,7 +235,9 @@ if(!is.null(args$hosp)){
 ps("Full joining casedeath, vaxboost and RR dataframes")
 joined <- joined %>% 
   full_join(boost, by = c("date","state")) %>%
-  full_join(rr, by = c("date", "state"))
+  full_join(rr, by = c("date", "state")) %>%
+  mutate(RR = case_when(date < min(rr$date) ~ 1,
+                        TRUE ~ RR))
 pd()
 
 
