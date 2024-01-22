@@ -228,6 +228,8 @@ if(!is.null(args$hosp)){
   maxCompleteDate <- min(maxCompleteDate, max(hosp$date))
   maxDate <- max(maxCompleteDate, max(hosp$date))
 
+} else {
+  maxDate <- max(maxCompleteDate)
 }
 
 # Joining vaxxincation data  -------------------------------------------------------
